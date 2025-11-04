@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>PeekPanel</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* CSS変数でテーマカラーを定義 */
+    :root {
+      /* ダークモード（デフォルト） */
+      --bg-primary: #202124;
+      --bg-secondary: #292a2d;
+      --bg-tertiary: #3c4043;
+      --border-color: #3c4043;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa0a6;
+      --tab-active-bg: #3c4043;
+      --hover-bg: #292a2d;
+      --button-hover-bg: #3c4043;
+    }
+
+    /* ライトモード */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f1f3f4;
+        --bg-tertiary: #e8eaed;
+        --border-color: #dadce0;
+        --text-primary: #202124;
+        --text-secondary: #5f6368;
+        --tab-active-bg: #e8eaed;
+        --hover-bg: #f1f3f4;
+        --button-hover-bg: #e8eaed;
+      }
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-primary);
+    }
+
+    /* タブエリア（上に配置） */
+    .tabs-container {
+      display: flex;
+      align-items: center;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 4px 8px;
+      gap: 4px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+      overflow-x: auto;
+    }
+
+    .tab {
+      width: 36px;
+      height: 36px;
+      padding: 6px;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .tab:hover {
+      background: var(--hover-bg);
+    }
+
+    .tab.active {
+      background: var(--tab-active-bg);
+    }
+
+    .tab.sleeping {
+      opacity: 0.5;
+      filter: grayscale(0.5);
+    }
+
+    .tab.dragging {
+      opacity: 0.5;
+    }
+
+    .tab-favicon {
+      width: 24px;
+      height: 24px;
+    }
+
+    .new-tab-button {
+      width: 36px;
+      height: 36px;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .new-tab-button:hover {
+      background: var(--hover-bg);
+      color: var(--text-primary);
+    }
+
+    /* ブラウザコントロール（下に配置） */
+    .browser-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 8px 8px 4px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 2px;
+    }
+
+    .nav-button,
+    .utility-button {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .nav-button {
+      color: var(--text-primary);
+    }
+
+    .nav-button:disabled {
+      color: var(--text-secondary);
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .utility-button {
+      color: var(--text-secondary);
+    }
+
+    .url-bar {
+      flex: 1;
+      height: 28px;
+      padding: 0 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      color: var(--text-primary);
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .url-bar:focus {
+      outline: none;
+      border-color: var(--text-secondary);
+      background: var(--bg-primary);
+    }
+
+    /* iframeエリア */
+    iframe {
+      flex: 1;
+      border: none;
+      display: none;
+      background: white;
+    }
+
+    iframe.active {
+      display: block;
+    }
+
+    /* フッターエリア */
+    .footer-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 12px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      font-size: 12px;
+    }
+
+    .footer-label {
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .ai-selector {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .ai-option {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .ai-option input[type="radio"] {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .ai-option label {
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .ai-option input[type="radio"]:checked+label {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* エラーオーバーレイ */
+    .error-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 32px;
+    }
+
+    .error-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.7;
+    }
+
+    .error-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .error-message {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      text-align: center;
+      max-width: 400px;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .error-button {
+      padding: 8px 24px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .error-button:hover {
+      background: var(--button-hover-bg);
+    }
+
+    .error-button.primary {
+      background: #1a73e8;
+      border-color: #1a73e8;
+      color: white;
+    }
+
+    .error-button.primary:hover {
+      background: #1557b0;
+      border-color: #1557b0;
+    }
+
+    /* エラー状態のタブ */
+    .tab-error .tab-favicon {
+      filter: brightness(1.2) contrast(0.8);
+    }
+
+    .tab-error::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 8px;
+      height: 8px;
+      background: #ea4335;
+      border-radius: 50%;
+      border: 2px solid var(--bg-secondary);
+    }
+
+    /* タブのコンテキストメニュー */
+    .tab-context-menu {
+      position: fixed;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      min-width: 200px;
+      padding: 4px 0;
+    }
+
+    .context-menu-item {
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .context-menu-item:hover {
+      background: var(--hover-bg);
+    }
+
+    .context-menu-separator {
+      height: 1px;
+      background: var(--border-color);
+      margin: 4px 0;
+    }
+
+    /* トースト通知 */
+    .toast-notification {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 10001;
+      font-size: 14px;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    .toast-notification.error {
+      border-left: 4px solid #f44336;
+    }
+
+    .toast-notification.fade-out {
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateX(-50%) translateY(20px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    /* タブグループヘッダー */
+    .group-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      margin: 2px 4px;
+      font-size: 12px;
+      color: var(--text-primary);
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .group-toggle {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 10px;
+      transition: all 0.2s;
+    }
+
+    .group-toggle:hover {
+      background: var(--hover-bg);
+      color: var(--text-primary);
+    }
+
+    .group-color {
+      font-size: 14px;
+    }
+
+    .group-name {
+      flex: 1;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .group-menu-button {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .group-menu-button:hover {
+      background: var(--hover-bg);
+      color: var(--text-primary);
+    }
+
+    /* グループ内のタブにインデントを追加 */
+    .tab.grouped {
+      margin-left: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- タブエリア（上） -->
+  <div class="tabs-container">
+    <div class="tabs" id="tabs"></div>
+    <button class="new-tab-button" id="newTab" title="新しいタブ">+</button>
+  </div>
+
+  <!-- ブラウザコントロール（下） -->
+  <div class="browser-controls">
+    <div class="nav-buttons">
+      <button class="nav-button" id="back" title="戻る">◀</button>
+      <button class="nav-button" id="forward" title="進む">▶</button>
+      <button class="nav-button" id="reload" title="更新">↻</button>
+    </div>
+    <input type="text" class="url-bar" id="urlBar" placeholder="URLを入力...">
+    <button class="utility-button" id="sendToMainBrowser" title="メインブラウザで開く">🔗</button>
+    <button class="utility-button" id="settingsButton" title="設定">⚙️</button>
+  </div>
+
+  <!-- iframeエリア -->
+  <div id="iframeContainer" style="display: flex; flex: 1; position: relative;"></div>
+
+  <!-- フッター（AI選択） -->
+  <div class="footer-controls">
+    <span class="footer-label">AI選択:</span>
+    <div class="ai-selector">
+      <div class="ai-option">
+        <input type="radio" id="ai-claude-footer" name="cleanupAI-footer" value="claude">
+        <label for="ai-claude-footer">Claude</label>
+      </div>
+      <div class="ai-option">
+        <input type="radio" id="ai-chatgpt-footer" name="cleanupAI-footer" value="chatgpt">
+        <label for="ai-chatgpt-footer">ChatGPT</label>
+      </div>
+      <div class="ai-option">
+        <input type="radio" id="ai-gemini-footer" name="cleanupAI-footer" value="gemini">
+        <label for="ai-gemini-footer">Gemini</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- カスタムコンテキストメニュー（テキスト選択時） -->
+  <div id="customContextMenu" style="display: none; position: fixed; z-index: 10000;">
+    <div
+      style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); padding: 4px 0; min-width: 200px;">
+      <div id="searchGoogleItem" class="context-menu-item"
+        style="display: flex; align-items: center; padding: 8px 16px; cursor: pointer; font-size: 13px; color: var(--text-primary); transition: background 0.15s;">
+        <span style="margin-right: 8px;">🔍</span>
+        <span>Googleで検索</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- エラーオーバーレイテンプレート -->
+  <template id="errorOverlayTemplate">
+    <div class="error-overlay">
+      <div class="error-icon">⚠️</div>
+      <div class="error-title">ページの読み込みに失敗しました</div>
+      <div class="error-message"></div>
+      <div class="error-actions">
+        <button class="error-button primary" data-action="retry">再読み込み</button>
+        <button class="error-button" data-action="close">閉じる</button>
+      </div>
+    </div>
+  </template>
+
+  <script src="../js/panel.js"></script>
+</body>
+
+</html>

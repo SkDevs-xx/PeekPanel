@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "PeekPanel",
+  "version": "1.0.0",
+  "description": "AI services in your side panel — peek, browse, and multitask seamlessly.",
+  "minimum_chrome_version": "114",
+  "permissions": [
+    "sidePanel",
+    "declarativeNetRequestWithHostAccess",
+    "contextMenus",
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://gemini.google.com/*",
+    "https://claude.ai/*",
+    "https://chatgpt.com/*",
+    "<all_urls>"
+  ],
+  "side_panel": {
+    "default_path": "pages/panel.html"
+  },
+  "action": {
+    "default_title": "サイドパネルを開く"
+  },
+  "background": {
+    "service_worker": "js/background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "js/content-script.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://claude.ai/*",
+        "https://chatgpt.com/*",
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "js/ai-auto-input.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

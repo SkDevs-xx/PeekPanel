@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PeekPanel 設定</title>
+  <link rel="stylesheet" href="../styles/common.css">
+</head>
+<body>
+  <div class="header">
+    <h1>⚙️ PeekPanel 設定</h1>
+    <button id="closeButton" class="button button-normal">閉じる</button>
+  </div>
+
+  <div class="setting-section">
+    <label class="setting-label">カスタムプロンプト</label>
+    <div class="setting-description">
+      テキスト選択時に使用できる独自のプロンプトを登録できます。<br>
+      プロンプト内で <code>{text}</code> を使うと、選択したテキストが挿入されます。
+    </div>
+
+    <!-- プロンプト一覧 -->
+    <div id="customPromptsContainer" class="prompts-container">
+      <!-- プロンプトカードが動的に追加される -->
+    </div>
+
+    <!-- 新規追加ボタン -->
+    <button class="button button-primary" id="addPromptButton" style="margin-top: 12px;">
+      ➕ 新しいプロンプトを追加
+    </button>
+  </div>
+
+  <div class="setting-section">
+    <label class="setting-label">自動送信</label>
+    <div class="setting-description">
+      テキスト入力後に自動的に送信ボタンをクリックします
+    </div>
+
+    <div class="radio-option">
+      <input type="checkbox" id="auto-submit" name="autoSubmit">
+      <label for="auto-submit">テキスト入力後に自動送信する</label>
+    </div>
+  </div>
+
+  <div class="setting-section">
+    <label class="setting-label">タブの自動スリープ</label>
+    <div class="setting-description">
+      一定時間使用していないタブを自動的にスリープさせ、メモリを節約します。スリープしたタブは再度アクティブにすると同じページが読み込まれます。
+    </div>
+
+    <div class="radio-option">
+      <input type="checkbox" id="auto-sleep-enabled" name="autoSleepEnabled">
+      <label for="auto-sleep-enabled">タブの自動スリープを有効にする</label>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <label for="auto-sleep-minutes" style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary);">
+        スリープまでの時間（分）
+      </label>
+      <input
+        type="number"
+        id="auto-sleep-minutes"
+        name="autoSleepMinutes"
+        min="1"
+        max="60"
+        value="5"
+        style="width: 100px; padding: 6px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);"
+      >
+    </div>
+
+    <div style="margin-top: 12px;">
+      <label for="no-sleep-domains" style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary);">
+        スリープ禁止ドメイン（1行に1つ）
+      </label>
+      <textarea
+        id="no-sleep-domains"
+        name="noSleepDomains"
+        rows="5"
+        placeholder="youtube.com&#10;music.youtube.com&#10;twitch.tv"
+        style="width: 100%; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: monospace; font-size: 12px; resize: vertical;"
+      ></textarea>
+      <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">
+        デフォルト: youtube.com, youtu.be, music.youtube.com, twitch.tv
+      </div>
+    </div>
+  </div>
+
+  <div class="setting-section">
+    <label class="setting-label">その他</label>
+    <div class="setting-description">
+      閲覧履歴やその他の機能にアクセスできます
+    </div>
+
+    <button class="button button-normal" id="historyButton" style="margin-top: 8px;">
+      🕐 最近閉じたタブを表示
+    </button>
+  </div>
+
+  <button class="button button-primary" id="saveButton">設定を保存</button>
+  <div class="status-message" id="statusMessage"></div>
+
+  <!-- プロンプト編集モーダル -->
+  <div id="promptModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">プロンプトを編集</h2>
+        <button class="modal-close" onclick="closePromptModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="promptName">プロンプト名</label>
+          <input type="text" id="promptName" placeholder="例: コードをレビュー"
+                 style="width: 100%; padding: 8px; background: var(--bg-secondary);
+                        border: 1px solid var(--border-color); border-radius: 4px;
+                        color: var(--text-primary);">
+        </div>
+
+        <div class="form-group">
+          <label for="promptText">プロンプト文</label>
+          <textarea id="promptText" rows="8" placeholder="例: 次のコードをレビューして、改善点を提案してください:
+
+{text}"
+                    style="width: 100%; padding: 8px; background: var(--bg-secondary);
+                           border: 1px solid var(--border-color); border-radius: 4px;
+                           color: var(--text-primary); font-family: monospace; resize: vertical;"></textarea>
+          <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">
+            {text} の部分に選択したテキストが挿入されます
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="button button-normal" onclick="closePromptModal()">キャンセル</button>
+        <button class="button button-primary" id="savePromptButton">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/settings.js"></script>
+</body>
+</html>
