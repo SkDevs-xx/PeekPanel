@@ -594,50 +594,13 @@ async function saveTabs() {
       url: tab.url,
       title: tab.title,
       history: tab.history,
-      historyIndex: tab.historyIndex,
-      groupId: tab.groupId // グループIDも保存
+      historyIndex: tab.historyIndex
     }));
 
   await chrome.storage.local.set({
     savedTabs: tabsData,
     currentTabIndex: tabs.findIndex(t => t.id === currentTabId && !t.isInternal)
   });
-}
-
-// タブグループの状態を保存
-async function saveTabGroups() {
-  const groupsData = tabGroups.map(group => ({
-    id: group.id,
-    name: group.name,
-    color: group.color,
-    collapsed: group.collapsed
-  }));
-
-  await chrome.storage.local.set({
-    savedTabGroups: groupsData
-  });
-}
-
-// タブグループの状態を読み込み
-async function loadTabGroups() {
-  const { savedTabGroups } = await chrome.storage.local.get(['savedTabGroups']);
-
-  if (savedTabGroups && savedTabGroups.length > 0) {
-    tabGroups = savedTabGroups.map(groupData => ({
-      id: groupData.id,
-      name: groupData.name,
-      color: groupData.color,
-      collapsed: groupData.collapsed || false
-    }));
-
-    // グループカウンターを更新
-    const maxGroupId = Math.max(...tabGroups.map(g => parseInt(g.id.replace('group-', ''))));
-    groupCounter = maxGroupId + 1;
-
-    return true;
-  }
-
-  return false;
 }
 
 // タブの状態を復元
@@ -653,7 +616,6 @@ async function restoreTabs() {
         tab.title = tabData.title || getTabTitle(tabData.url);
         tab.history = tabData.history || [tabData.url];
         tab.historyIndex = tabData.historyIndex || 0;
-        tab.groupId = tabData.groupId || null; // グループIDも復元
       }
     });
 
@@ -740,320 +702,6 @@ function getDragAfterElement(container, x) {
       return closest;
     }
   }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
-
-// === タブグループ管理関数 ===
-
-// 新しいグループを作成
-function createGroup(name = '新しいグループ', color = 'blue') {
-  const groupId = `group-${groupCounter++}`;
-
-  const group = {
-    id: groupId,
-    name: name,
-    color: color,
-    collapsed: false
-  };
-
-  tabGroups.push(group);
-  saveTabGroups();
-
-  return groupId;
-}
-
-// グループを削除
-function deleteGroup(groupId) {
-  // グループに属するタブのgroupIdをnullに設定
-  tabs.forEach(tab => {
-    if (tab.groupId === groupId) {
-      tab.groupId = null;
-    }
-  });
-
-  // グループを削除
-  tabGroups = tabGroups.filter(g => g.id !== groupId);
-
-  saveTabGroups();
-  saveTabs();
-  renderTabs();
-}
-
-// グループ情報を更新
-function updateGroup(groupId, updates) {
-  const group = tabGroups.find(g => g.id === groupId);
-  if (group) {
-    Object.assign(group, updates);
-    saveTabGroups();
-    renderTabs();
-  }
-}
-
-// タブをグループに追加
-function addTabToGroup(tabId, groupId) {
-  const tab = tabs.find(t => t.id === tabId);
-  const group = tabGroups.find(g => g.id === groupId);
-
-  if (tab && group) {
-    tab.groupId = groupId;
-    saveTabs();
-    renderTabs();
-  }
-}
-
-// タブをグループから削除
-function removeTabFromGroup(tabId) {
-  const tab = tabs.find(t => t.id === tabId);
-
-  if (tab) {
-    tab.groupId = null;
-    saveTabs();
-    renderTabs();
-  }
-}
-
-// グループ別にタブを整理して返す
-function getTabsByGroup() {
-  const grouped = {
-    ungrouped: [],
-    groups: {}
-  };
-
-  // グループ情報を初期化
-  tabGroups.forEach(group => {
-    grouped.groups[group.id] = {
-      group: group,
-      tabs: []
-    };
-  });
-
-  // タブを振り分け
-  tabs.forEach(tab => {
-    if (tab.isInternal) return; // 内部ページは除外
-
-    if (tab.groupId && grouped.groups[tab.groupId]) {
-      grouped.groups[tab.groupId].tabs.push(tab);
-    } else {
-      grouped.ungrouped.push(tab);
-    }
-  });
-
-  return grouped;
-}
-
-// タブを再描画（グループ対応）
-function renderTabs() {
-  const tabsContainer = document.getElementById('tabs');
-  if (!tabsContainer) return;
-
-  // 既存のグループヘッダーのみ削除（タブ要素は残す）
-  const groupHeaders = tabsContainer.querySelectorAll('.group-header');
-  groupHeaders.forEach(header => header.remove());
-
-  // すべてのタブから.groupedクラスを削除
-  const allTabElements = tabsContainer.querySelectorAll('.tab');
-  allTabElements.forEach(tabElement => {
-    tabElement.classList.remove('grouped');
-  });
-
-  const groupedTabs = getTabsByGroup();
-
-  // グループごとにタブを表示
-  tabGroups.forEach(group => {
-    const groupData = groupedTabs.groups[group.id];
-    if (!groupData || groupData.tabs.length === 0) return;
-
-    // グループヘッダーを作成
-    const groupHeader = createGroupHeader(group);
-
-    // 最初のタブの前にヘッダーを挿入
-    const firstTabInGroup = groupData.tabs[0];
-    const firstTabElement = document.querySelector(`.tab[data-tab-id="${firstTabInGroup.id}"]`);
-
-    if (firstTabElement) {
-      tabsContainer.insertBefore(groupHeader, firstTabElement);
-    } else {
-      tabsContainer.appendChild(groupHeader);
-    }
-
-    // グループ内のタブに.groupedクラスを追加
-    groupData.tabs.forEach(tab => {
-      const tabElement = document.querySelector(`.tab[data-tab-id="${tab.id}"]`);
-      if (tabElement) {
-        tabElement.classList.add('grouped');
-
-        // 折りたたみ時は非表示
-        if (group.collapsed) {
-          tabElement.style.display = 'none';
-        } else {
-          tabElement.style.display = '';
-        }
-      }
-    });
-  });
-
-  // グループ化されていないタブの表示を確保
-  groupedTabs.ungrouped.forEach(tab => {
-    const tabElement = document.querySelector(`.tab[data-tab-id="${tab.id}"]`);
-    if (tabElement) {
-      tabElement.style.display = '';
-    }
-  });
-}
-
-// グループヘッダーを作成
-function createGroupHeader(group) {
-  const header = document.createElement('div');
-  header.className = 'group-header';
-  header.dataset.groupId = group.id;
-
-  const colorInfo = GROUP_COLORS.find(c => c.id === group.color);
-  const colorEmoji = colorInfo ? colorInfo.emoji : '🔵';
-
-  header.innerHTML = `
-    <button class="group-toggle" title="${group.collapsed ? '展開' : '折りたたむ'}">
-      ${group.collapsed ? '▶' : '▼'}
-    </button>
-    <span class="group-color">${colorEmoji}</span>
-    <span class="group-name">${group.name}</span>
-    <button class="group-menu-button" title="グループメニュー">⋯</button>
-  `;
-
-  // 折りたたみボタンのイベント
-  header.querySelector('.group-toggle').addEventListener('click', (e) => {
-    e.stopPropagation();
-    updateGroup(group.id, { collapsed: !group.collapsed });
-  });
-
-  // グループメニューボタンのイベント
-  header.querySelector('.group-menu-button').addEventListener('click', (e) => {
-    e.stopPropagation();
-    showGroupContextMenu(group.id, e.clientX, e.clientY);
-  });
-
-  return header;
-}
-
-// グループコンテキストメニューを表示
-function showGroupContextMenu(groupId, x, y) {
-  const group = tabGroups.find(g => g.id === groupId);
-  if (!group) return;
-
-  // 既存のメニューを削除
-  const existingMenu = document.querySelector('.group-context-menu');
-  if (existingMenu) {
-    existingMenu.remove();
-  }
-
-  // メニュー要素を作成
-  const menu = document.createElement('div');
-  menu.className = 'tab-context-menu group-context-menu';
-  menu.style.left = `${x}px`;
-  menu.style.top = `${y}px`;
-
-  // メニュー項目
-  const menuItems = [
-    {
-      label: 'グループ名を編集',
-      icon: '✏️',
-      action: () => editGroupName(groupId)
-    },
-    {
-      label: 'グループ色を変更',
-      icon: '🎨',
-      action: () => showGroupColorPicker(groupId)
-    },
-    { separator: true },
-    {
-      label: 'グループ内のタブをすべて閉じる',
-      icon: '✕',
-      action: () => closeGroupTabs(groupId)
-    },
-    { separator: true },
-    {
-      label: 'グループを削除',
-      icon: '🗑️',
-      action: () => deleteGroup(groupId)
-    }
-  ];
-
-  // メニューアイテムを生成
-  menuItems.forEach(item => {
-    if (item.separator) {
-      const separator = document.createElement('div');
-      separator.className = 'context-menu-separator';
-      menu.appendChild(separator);
-    } else {
-      const menuItem = document.createElement('div');
-      menuItem.className = 'context-menu-item';
-      menuItem.innerHTML = `${item.icon} ${item.label}`;
-      menuItem.onclick = () => {
-        item.action();
-        menu.remove();
-      };
-      menu.appendChild(menuItem);
-    }
-  });
-
-  // メニューを追加
-  document.body.appendChild(menu);
-
-  // メニュー外クリックで閉じる
-  setTimeout(() => {
-    const closeMenu = (e) => {
-      if (!menu.contains(e.target)) {
-        menu.remove();
-        document.removeEventListener('click', closeMenu);
-      }
-    };
-    document.addEventListener('click', closeMenu);
-  }, 0);
-}
-
-// グループ名を編集
-function editGroupName(groupId) {
-  const group = tabGroups.find(g => g.id === groupId);
-  if (!group) return;
-
-  const newName = prompt('グループ名を入力してください:', group.name);
-  if (newName !== null && newName.trim() !== '') {
-    updateGroup(groupId, { name: newName.trim() });
-  }
-}
-
-// グループ色選択ダイアログを表示
-function showGroupColorPicker(groupId) {
-  const group = tabGroups.find(g => g.id === groupId);
-  if (!group) return;
-
-  // シンプルなダイアログを作成
-  const colorOptions = GROUP_COLORS.map(color =>
-    `${color.emoji} ${color.label}`
-  ).join('\n');
-
-  const message = `グループの色を選択してください:\n\n${colorOptions}\n\n番号を入力 (1-${GROUP_COLORS.length}):`;
-  const input = prompt(message);
-
-  if (input !== null) {
-    const index = parseInt(input) - 1;
-    if (index >= 0 && index < GROUP_COLORS.length) {
-      updateGroup(groupId, { color: GROUP_COLORS[index].id });
-    }
-  }
-}
-
-// グループ内のすべてのタブを閉じる
-function closeGroupTabs(groupId) {
-  const tabsToClose = tabs.filter(t => t.groupId === groupId && !t.isInternal);
-
-  if (tabsToClose.length === 0) return;
-
-  const confirmed = confirm(`グループ内の${tabsToClose.length}個のタブを閉じますか？`);
-  if (!confirmed) return;
-
-  // タブを閉じる
-  tabsToClose.forEach(tab => {
-    closeTab(tab.id);
-  });
 }
 
 
@@ -1634,58 +1282,14 @@ function showTabContextMenu(tabId, x, y) {
       label: 'メインブラウザで開く',
       icon: '🔗',
       action: () => sendTabToMainBrowser(tabId)
-    }
-  ];
-
-  // グループ関連のメニュー項目
-  if (tab.groupId) {
-    // タブがグループに属している場合
-    menuItems.push(
-      { separator: true },
-      {
-        label: 'グループから削除',
-        icon: '📤',
-        action: () => removeTabFromGroup(tabId)
-      }
-    );
-  } else {
-    // タブがグループに属していない場合
-    menuItems.push({ separator: true });
-
-    // 新しいグループに追加
-    menuItems.push({
-      label: '新しいグループに追加',
-      icon: '➕',
-      action: () => {
-        const groupName = prompt('グループ名を入力してください:', '新しいグループ');
-        if (groupName !== null && groupName.trim() !== '') {
-          const groupId = createGroup(groupName.trim(), 'blue');
-          addTabToGroup(tabId, groupId);
-        }
-      }
-    });
-
-    // 既存のグループに追加
-    if (tabGroups.length > 0) {
-      tabGroups.forEach(group => {
-        menuItems.push({
-          label: `${GROUP_COLORS.find(c => c.id === group.color)?.emoji || '🔵'} ${group.name}に追加`,
-          icon: '',
-          action: () => addTabToGroup(tabId, group.id)
-        });
-      });
-    }
-  }
-
-  // タブを閉じる
-  menuItems.push(
+    },
     { separator: true },
     {
       label: 'タブを閉じる',
       icon: '✕',
       action: () => closeTab(tabId)
     }
-  );
+  ];
 
   // メニューアイテムを生成
   menuItems.forEach(item => {
@@ -1760,9 +1364,6 @@ function showErrorNotification(message) {
   // 閉じたタブの履歴を復元
   await restoreClosedTabsHistory();
 
-  // タブグループを読み込み
-  await loadTabGroups();
-
   // 保存されたタブを復元
   const restored = await restoreTabs();
 
@@ -1772,9 +1373,6 @@ function showErrorNotification(message) {
       createTab(ai.url, index === 0);
     });
   }
-
-  // グループヘッダーを表示
-  renderTabs();
 
   // 右クリックメニューからのURL確認
   const { pendingUrl } = await chrome.storage.local.get('pendingUrl');
