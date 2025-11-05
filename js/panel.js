@@ -695,7 +695,7 @@ async function restoreTabs() {
           if (tab.groupId) {
             const group = tabGroups.find(g => g.id === tab.groupId);
             if (group) {
-              tabElement.style.borderTop = `3px solid ${group.color}`;
+              tabElement.style.borderBottom = `3px solid ${group.color}`;
             }
           }
         }
@@ -1609,7 +1609,7 @@ function addTabToGroup(tabId, groupId) {
   if (tabElement) {
     const group = tabGroups.find(g => g.id === groupId);
     if (group) {
-      tabElement.style.borderTop = `3px solid ${group.color}`;
+      tabElement.style.borderBottom = `3px solid ${group.color}`;
     }
   }
 
@@ -1633,7 +1633,7 @@ function removeTabFromGroup(tabId) {
   // タブ要素からグループカラーを削除
   const tabElement = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
   if (tabElement) {
-    tabElement.style.borderTop = '';
+    tabElement.style.borderBottom = '';
   }
 
   // グループが空になった場合は削除
@@ -1690,6 +1690,14 @@ function showGroupManagementMenu(groupId, x, y) {
       }
     },
     {
+      label: 'グループの色を変更',
+      icon: '🎨',
+      action: () => {
+        menu.remove();
+        showGroupColorMenu(groupId, x, y);
+      }
+    },
+    {
       label: 'グループを解除',
       icon: '🗑️',
       action: () => {
@@ -1700,7 +1708,7 @@ function showGroupManagementMenu(groupId, x, y) {
               tab.groupId = null;
               const tabElement = document.querySelector(`.tab[data-tab-id="${tab.id}"]`);
               if (tabElement) {
-                tabElement.style.borderTop = '';
+                tabElement.style.borderBottom = '';
               }
             }
           });
@@ -1753,6 +1761,95 @@ function showGroupManagementMenu(groupId, x, y) {
       };
       menu.appendChild(menuItem);
     }
+  });
+
+  // メニューを追加
+  document.body.appendChild(menu);
+
+  // 外側をクリックしたら閉じる
+  const closeMenu = (e) => {
+    if (!menu.contains(e.target)) {
+      menu.remove();
+      document.removeEventListener('click', closeMenu);
+    }
+  };
+
+  setTimeout(() => {
+    document.addEventListener('click', closeMenu);
+  }, 0);
+}
+
+/**
+ * グループの色選択メニューを表示
+ * @param {string} groupId - グループID
+ * @param {number} x - マウスX座標
+ * @param {number} y - マウスY座標
+ */
+function showGroupColorMenu(groupId, x, y) {
+  const group = tabGroups.find(g => g.id === groupId);
+  if (!group) return;
+
+  // 既存のメニューを削除
+  const existingMenu = document.querySelector('.group-color-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+
+  // メニュー要素を作成
+  const menu = document.createElement('div');
+  menu.className = 'tab-context-menu group-color-menu';
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+
+  // ヘッダー
+  const header = document.createElement('div');
+  header.className = 'context-menu-item';
+  header.style.fontWeight = 'bold';
+  header.style.cursor = 'default';
+  header.innerHTML = '🎨 色を選択';
+  menu.appendChild(header);
+
+  // セパレーター
+  const separator = document.createElement('div');
+  separator.className = 'context-menu-separator';
+  menu.appendChild(separator);
+
+  // 各色のオプション
+  GROUP_COLORS.forEach(colorOption => {
+    const colorItem = document.createElement('div');
+    colorItem.className = 'context-menu-item';
+
+    const isCurrentColor = group.colorId === colorOption.id;
+    const checkmark = isCurrentColor ? '✓ ' : '';
+
+    colorItem.innerHTML = `${checkmark}<span style="color: ${colorOption.color}">●</span> ${colorOption.label}`;
+
+    colorItem.onclick = () => {
+      // グループの色を変更
+      group.colorId = colorOption.id;
+      group.color = colorOption.color;
+
+      // グループヘッダーの色を更新
+      const header = document.querySelector(`.tab-group-header[data-group-id="${groupId}"]`);
+      if (header) {
+        header.style.backgroundColor = colorOption.color;
+      }
+
+      // グループ内のすべてのタブの色を更新
+      tabs.forEach(tab => {
+        if (tab.groupId === groupId) {
+          const tabElement = document.querySelector(`.tab[data-tab-id="${tab.id}"]`);
+          if (tabElement) {
+            tabElement.style.borderBottom = `3px solid ${colorOption.color}`;
+          }
+        }
+      });
+
+      saveTabs();
+      menu.remove();
+    };
+
+    menu.appendChild(colorItem);
   });
 
   // メニューを追加
@@ -1982,21 +2079,6 @@ function showTabContextMenu(tabId, x, y) {
       hide: tab.isInternal
     },
     { separator: true, hide: tab.isInternal },
-    {
-      label: '右側のタブを閉じる',
-      icon: '➡️',
-      action: () => closeTabsToRight(tabId),
-      disabled: !hasTabsToRight,
-      hide: tab.isInternal
-    },
-    {
-      label: '他のタブをすべて閉じる',
-      icon: '🗙',
-      action: () => closeOtherTabs(tabId),
-      disabled: normalTabs.length <= 1,
-      hide: tab.isInternal
-    },
-    { separator: true },
     {
       label: 'タブを閉じる',
       icon: '✕',
