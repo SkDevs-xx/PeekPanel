@@ -54,24 +54,45 @@
       align-items: center;
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
-      padding: 4px 8px;
-      gap: 4px;
+      padding: 2px 4px;
+      gap: 2px;
+      overflow-x: auto;
+      overflow-y: visible;
+      scrollbar-width: none;
+      /* Firefox */
+      -ms-overflow-style: none;
+      /* IE/Edge */
+      position: relative;
+      z-index: 1000;
+    }
+
+    .tabs-container::-webkit-scrollbar {
+      display: none;
+      /* Chrome/Safari */
     }
 
     .tabs {
       display: flex;
-      gap: 4px;
+      flex-direction: row;
+      gap: 2px;
       flex: 1;
       overflow-x: auto;
+      overflow-y: visible;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none;
     }
 
     .tab {
-      width: 36px;
-      height: 36px;
-      padding: 6px;
+      width: 32px;
+      height: 32px;
+      padding: 4px;
       background: transparent;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -80,6 +101,7 @@
       position: relative;
       flex-shrink: 0;
       overflow: visible;
+      z-index: 1;
     }
 
     .tab .pin-indicator,
@@ -109,36 +131,134 @@
 
     /* タブグループヘッダー */
     .tab-group-header {
-      height: 24px;
+      width: auto;
+      min-width: 32px;
+      max-width: 100px;
+      height: 32px;
       padding: 0 8px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
       cursor: pointer;
       border-radius: 6px;
       font-size: 11px;
       font-weight: 600;
-      color: white;
+      color: rgba(0, 0, 0, 0.85);
       transition: all 0.2s;
       flex-shrink: 0;
       user-select: none;
+      opacity: 0.9;
+      line-height: 1;
+      position: relative;
+      z-index: 50;
+    }
+
+    .tab-group-header.expanded {
+      opacity: 1;
     }
 
     .tab-group-header:hover {
-      opacity: 0.9;
+      opacity: 1;
     }
 
     .group-arrow {
-      font-size: 10px;
-      transition: transform 0.2s;
+      display: none;
     }
 
     .group-name {
-      flex: 1;
+      display: block;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 84px;
     }
+
+    /* グループコンテナ */
+    .group-container {
+      position: relative;
+      display: inline-flex;
+      flex-direction: column;
+      gap: 0;
+      flex-shrink: 0;
+      align-items: flex-start;
+      width: auto;
+      overflow: visible;
+      z-index: 50;
+    }
+
+    .group-container.dragging {
+      opacity: 0.5;
+    }
+
+    /* グループ内タブのラッパー */
+    .group-tabs-wrapper {
+      position: fixed;
+      display: flex !important;
+      flex-direction: column;
+      gap: 2px;
+      padding: 6px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+      z-index: 999999;
+      overflow: visible;
+      min-width: 40px;
+      pointer-events: auto;
+      width: auto;
+    }
+
+    .group-tabs-wrapper.collapsed {
+      display: none !important;
+    }
+
+    /* グループ内のタブ */
+    .tab.grouped {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      min-height: 32px;
+      max-width: 32px;
+      max-height: 32px;
+      justify-content: center;
+      padding: 4px;
+      flex-shrink: 0;
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      background: transparent;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .tab.grouped:hover {
+      background: var(--hover-bg);
+    }
+
+    .tab.grouped.active {
+      background: var(--tab-active-bg);
+    }
+
+    /* グループ内のタブではタイトルを非表示 */
+    .tab.grouped .tab-title {
+      display: none !important;
+    }
+
+    /* グループ内のタブではクローズボタンを非表示 */
+    .tab.grouped .tab-close {
+      display: none !important;
+    }
+
+    .tab.grouped .tab-favicon {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      min-height: 20px;
+      display: block !important;
+      visibility: visible !important;
+      object-fit: contain;
+    }
+
 
     .tab.active {
       background: var(--tab-active-bg);
@@ -154,8 +274,19 @@
     }
 
     .tab-favicon {
-      width: 24px;
-      height: 24px;
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+    }
+
+    /* タブタイトル - デフォルトは非表示 */
+    .tab-title {
+      display: none;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 150px;
     }
 
     .new-tab-button {
@@ -183,9 +314,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 8px 8px 4px;
+      height: 41px;
+      padding: 0 8px 0 4px;
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
+      position: relative;
+      z-index: 1;
     }
 
     .nav-buttons {
@@ -741,6 +875,23 @@
       <div class="group-modal-footer">
         <button class="group-modal-button secondary" id="cancelRenameModal">キャンセル</button>
         <button class="group-modal-button primary" id="confirmRenameModal">変更</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 削除確認モーダル -->
+  <div class="group-modal" id="deleteGroupModal" style="display: none;">
+    <div class="group-modal-content">
+      <div class="group-modal-header">
+        <h2>グループを削除</h2>
+        <button class="group-modal-close" id="closeDeleteModal">✕</button>
+      </div>
+      <div class="group-modal-body">
+        <p id="deleteGroupMessage" style="color: var(--text-primary); font-size: 14px; line-height: 1.6; margin-bottom: 16px;"></p>
+      </div>
+      <div class="group-modal-footer">
+        <button class="group-modal-button secondary" id="cancelDelete">キャンセル</button>
+        <button class="group-modal-button primary" id="confirmDelete" style="background: #dc3545;">削除</button>
       </div>
     </div>
   </div>
