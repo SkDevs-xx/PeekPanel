@@ -710,14 +710,6 @@ async function restoreTabs() {
               muteIndicator.style.display = 'block';
             }
           }
-
-          // グループカラーの適用
-          if (tab.groupId) {
-            const group = tabGroups.find(g => g.id === tab.groupId);
-            if (group) {
-              tabElement.style.borderBottom = `3px solid ${group.color}`;
-            }
-          }
         }
       }
     });
@@ -760,26 +752,7 @@ function setupDragAndDrop(tabElement) {
 
     // ドラッグ後、開いているグループのタブラッパー位置を更新
     setTimeout(() => {
-      tabGroups.forEach(group => {
-        if (!group.isCollapsed) {
-          const groupContainer = document.querySelector(`.group-container[data-group-id="${group.id}"]`);
-          if (groupContainer) {
-            const tabsWrapper = groupContainer.querySelector('.group-tabs-wrapper');
-            const header = groupContainer.querySelector('.tab-group-header');
-            if (tabsWrapper && header && !tabsWrapper.classList.contains('collapsed')) {
-              const headerRect = header.getBoundingClientRect();
-              const wrapperRect = tabsWrapper.getBoundingClientRect();
-              const wrapperWidth = wrapperRect.width;
-
-              // ヘッダーの中央に配置
-              const centerLeft = headerRect.left + (headerRect.width / 2) - (wrapperWidth / 2);
-
-              tabsWrapper.style.top = '41px';
-              tabsWrapper.style.left = `${centerLeft}px`;
-            }
-          }
-        }
-      });
+      updateExpandedGroupPositions();
     }, 50);
   });
 
@@ -1632,25 +1605,9 @@ function setupGroupContainerDragAndDrop(containerElement) {
     draggedTabElement = null;
     saveTabs();
 
-    // ドラッグ後、グループが開いている場合はタブラッパーの位置を更新
+    // ドラッグ後、開いているグループのタブラッパー位置を更新
     setTimeout(() => {
-      const groupId = containerElement.dataset.groupId;
-      const group = tabGroups.find(g => g.id === groupId);
-      if (group && !group.isCollapsed) {
-        const tabsWrapper = containerElement.querySelector('.group-tabs-wrapper');
-        const header = containerElement.querySelector('.tab-group-header');
-        if (tabsWrapper && header && !tabsWrapper.classList.contains('collapsed')) {
-          const headerRect = header.getBoundingClientRect();
-          const wrapperRect = tabsWrapper.getBoundingClientRect();
-          const wrapperWidth = wrapperRect.width;
-
-          // ヘッダーの中央に配置
-          const centerLeft = headerRect.left + (headerRect.width / 2) - (wrapperWidth / 2);
-
-          tabsWrapper.style.top = '41px';
-          tabsWrapper.style.left = `${centerLeft}px`;
-        }
-      }
+      updateExpandedGroupPositions();
     }, 50);
   });
 
@@ -1694,27 +1651,9 @@ function setupGroupDragAndDrop(headerElement) {
     draggedTabElement = null;
     saveTabs();
 
-    // ドラッグ後、グループが開いている場合はタブラッパーの位置を更新
+    // ドラッグ後、開いているグループのタブラッパー位置を更新
     setTimeout(() => {
-      const groupId = headerElement.dataset.groupId;
-      const group = tabGroups.find(g => g.id === groupId);
-      if (group && !group.isCollapsed) {
-        const groupContainer = headerElement.closest('.group-container');
-        if (groupContainer) {
-          const tabsWrapper = groupContainer.querySelector('.group-tabs-wrapper');
-          if (tabsWrapper && !tabsWrapper.classList.contains('collapsed')) {
-            const headerRect = headerElement.getBoundingClientRect();
-            const wrapperRect = tabsWrapper.getBoundingClientRect();
-            const wrapperWidth = wrapperRect.width;
-
-            // ヘッダーの中央に配置
-            const centerLeft = headerRect.left + (headerRect.width / 2) - (wrapperWidth / 2);
-
-            tabsWrapper.style.top = '41px';
-            tabsWrapper.style.left = `${centerLeft}px`;
-          }
-        }
-      }
+      updateExpandedGroupPositions();
     }, 50);
   });
 
@@ -1816,31 +1755,18 @@ function toggleGroupCollapse(groupId) {
       } else {
         tabsWrapper.classList.remove('collapsed');
 
-        // position: fixed なので、ヘッダーの位置を計算して設定
-        const header = groupContainer.querySelector('.tab-group-header');
-        if (header) {
-          const headerRect = header.getBoundingClientRect();
+        // position: fixed なので、タブバー全体の位置を基準に設定
+        const tabsContainer = document.querySelector('.tabs-container');
+        if (tabsContainer) {
+          const containerRect = tabsContainer.getBoundingClientRect();
 
-          // タブラッパーの幅を取得（まだレンダリングされていない場合は一時的に表示）
-          const wasHidden = tabsWrapper.classList.contains('collapsed');
-          if (wasHidden) {
-            tabsWrapper.style.visibility = 'hidden';
-            tabsWrapper.classList.remove('collapsed');
-          }
+          // タブバーの下に、左端から表示
+          tabsWrapper.style.top = `${containerRect.bottom}px`;
+          tabsWrapper.style.left = '0';
+          tabsWrapper.style.width = '100vw';
 
-          const wrapperRect = tabsWrapper.getBoundingClientRect();
-          const wrapperWidth = wrapperRect.width;
-
-          if (wasHidden) {
-            tabsWrapper.classList.add('collapsed');
-            tabsWrapper.style.visibility = '';
-          }
-
-          // ヘッダーの中央に配置
-          const centerLeft = headerRect.left + (headerRect.width / 2) - (wrapperWidth / 2);
-
-          tabsWrapper.style.top = '41px';
-          tabsWrapper.style.left = `${centerLeft}px`;
+          // グループカラーのラインを下部に追加
+          tabsWrapper.style.borderBottom = `3px solid ${group.color}`;
         }
       }
     }
@@ -1858,18 +1784,20 @@ function updateExpandedGroupPositions() {
       const groupContainer = document.querySelector(`.group-container[data-group-id="${group.id}"]`);
       if (groupContainer) {
         const tabsWrapper = groupContainer.querySelector('.group-tabs-wrapper');
-        const header = groupContainer.querySelector('.tab-group-header');
 
-        if (tabsWrapper && header && !tabsWrapper.classList.contains('collapsed')) {
-          const headerRect = header.getBoundingClientRect();
-          const wrapperRect = tabsWrapper.getBoundingClientRect();
-          const wrapperWidth = wrapperRect.width;
+        if (tabsWrapper && !tabsWrapper.classList.contains('collapsed')) {
+          const tabsContainer = document.querySelector('.tabs-container');
+          if (tabsContainer) {
+            const containerRect = tabsContainer.getBoundingClientRect();
 
-          // ヘッダーの中央に配置
-          const centerLeft = headerRect.left + (headerRect.width / 2) - (wrapperWidth / 2);
+            // タブバーの下に、左端から表示
+            tabsWrapper.style.top = `${containerRect.bottom}px`;
+            tabsWrapper.style.left = '0';
+            tabsWrapper.style.width = '100vw';
 
-          tabsWrapper.style.top = '41px';
-          tabsWrapper.style.left = `${centerLeft}px`;
+            // グループカラーのラインを維持
+            tabsWrapper.style.borderBottom = `3px solid ${group.color}`;
+          }
         }
       }
     }
