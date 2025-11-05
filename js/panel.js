@@ -162,11 +162,15 @@ function createTab(url, isActive = false, isInternal = false) {
     clearTimeout(loadTimeout); // 成功時はタイムアウトをクリア
     try {
       const currentUrl = iframe.src;
-      updateTabFavicon(tabId, currentUrl);
+      const tab = tabs.find(t => t.id === tabId);
+
+      // スリープ中のタブはファビコン更新をスキップ
+      if (!tab || !tab.isSleeping) {
+        updateTabFavicon(tabId, currentUrl);
+      }
       updateTabTitle(tabId, iframe);
 
       // iframe内での遷移を検出（内部ページのみ履歴を管理）
-      const tab = tabs.find(t => t.id === tabId);
 
       // 読み込み完了をマーク（空のURL、about:blank、panel.html自体は除外）
       const isPanelPage = currentUrl && currentUrl.includes('/pages/panel.html');
