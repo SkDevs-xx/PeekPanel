@@ -1657,7 +1657,18 @@ function renderGroup(group) {
   if (group.collapsed) {
     header.classList.add('collapsed');
   }
-  header.textContent = group.emoji;
+
+  // 絵文字とグループ名を表示
+  const emojiSpan = document.createElement('span');
+  emojiSpan.className = 'group-emoji';
+  emojiSpan.textContent = group.emoji;
+
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'group-header-name';
+  nameSpan.textContent = group.name;
+
+  header.appendChild(emojiSpan);
+  header.appendChild(nameSpan);
   header.title = group.name;
   header.onclick = () => toggleGroup(group.id);
 
@@ -1948,21 +1959,79 @@ function renameGroup(groupId) {
   const group = tabGroups.find(g => g.id === groupId);
   if (!group) return;
 
-  const newName = prompt('新しいグループ名を入力:', group.name);
-  if (newName && newName.trim()) {
-    group.name = newName.trim();
+  const modal = document.getElementById('groupRenameModal');
+  const input = document.getElementById('groupRenameInput');
+  const confirmBtn = document.getElementById('confirmRename');
+  const cancelBtn = document.getElementById('cancelRename');
+  const closeBtn = document.getElementById('renameModalClose');
 
-    // ヘッダーのtitleを更新
-    const groupElement = document.querySelector(`.tab-group[data-group-id="${groupId}"]`);
-    if (groupElement) {
-      const header = groupElement.querySelector('.tab-group-header');
-      if (header) {
-        header.title = group.name;
+  // 現在のグループ名を設定
+  input.value = group.name;
+
+  // モーダルを表示
+  modal.style.display = 'flex';
+  input.focus();
+  input.select();
+
+  // 確認ボタンのハンドラー
+  const handleConfirm = () => {
+    const newName = input.value.trim();
+    if (newName) {
+      group.name = newName;
+
+      // ヘッダーを更新
+      const groupElement = document.querySelector(`.tab-group[data-group-id="${groupId}"]`);
+      if (groupElement) {
+        const header = groupElement.querySelector('.tab-group-header');
+        if (header) {
+          const nameSpan = header.querySelector('.group-header-name');
+          if (nameSpan) {
+            nameSpan.textContent = group.name;
+          }
+          header.title = group.name;
+        }
       }
-    }
 
-    saveTabGroups();
-  }
+      saveTabGroups();
+      hideRenameModal();
+    }
+  };
+
+  // キャンセルボタンのハンドラー
+  const handleCancel = () => {
+    hideRenameModal();
+  };
+
+  // Enterキーで確認
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleConfirm();
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
+  };
+
+  // モーダルを閉じる
+  const hideRenameModal = () => {
+    modal.style.display = 'none';
+    confirmBtn.removeEventListener('click', handleConfirm);
+    cancelBtn.removeEventListener('click', handleCancel);
+    closeBtn.removeEventListener('click', handleCancel);
+    input.removeEventListener('keydown', handleKeyDown);
+  };
+
+  // イベントリスナーを追加
+  confirmBtn.addEventListener('click', handleConfirm);
+  cancelBtn.addEventListener('click', handleCancel);
+  closeBtn.addEventListener('click', handleCancel);
+  input.addEventListener('keydown', handleKeyDown);
+
+  // 背景クリックで閉じる
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      handleCancel();
+    }
+  });
 }
 
 /**
