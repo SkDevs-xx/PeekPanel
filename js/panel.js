@@ -327,11 +327,6 @@ function closeTab(tabId) {
     }
   }
 
-  // タブバーを再構築
-  if (!tab.isInternal) {
-    rebuildTabBar();
-  }
-
   // 状態を保存
   saveTabs();
 }
@@ -1515,25 +1510,13 @@ function setupGroupDragAndDrop(headerElement) {
     draggedTabElement = headerElement;
     headerElement.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', headerElement.dataset.groupId);
   });
 
   headerElement.addEventListener('dragend', (e) => {
     headerElement.classList.remove('dragging');
-
-    // DOM上の順序を更新
-    const tabsContainer = document.getElementById('tabs');
-    const newOrder = [];
-
-    Array.from(tabsContainer.children).forEach(el => {
-      if (el.classList.contains('tab-group-header')) {
-        newOrder.push({ type: 'group', id: el.dataset.groupId });
-      } else if (el.classList.contains('tab')) {
-        newOrder.push({ type: 'tab', id: el.dataset.tabId });
-      }
-    });
-
-    saveTabs();
     draggedTabElement = null;
+    saveTabs();
   });
 
   headerElement.addEventListener('dragover', (e) => {
@@ -1597,107 +1580,28 @@ function toggleGroupCollapse(groupId) {
 function rebuildTabBar() {
   const tabsContainer = document.getElementById('tabs');
 
-  // 既存のタブとグループヘッダーを保持
+  // 既存の要素をすべて取得
   const existingElements = new Map();
-  const elementOrder = [];
+  const currentOrder = [];
 
-  // 現在のDOM順序を保持
   Array.from(tabsContainer.children).forEach(el => {
     if (el.classList.contains('tab')) {
-      existingElements.set(el.dataset.tabId, el);
-      elementOrder.push({ type: 'tab', id: el.dataset.tabId });
+      existingElements.set('tab-' + el.dataset.tabId, el);
+      currentOrder.push({ type: 'tab', id: el.dataset.tabId });
     } else if (el.classList.contains('tab-group-header')) {
-      existingElements.set(el.dataset.groupId, el);
-      elementOrder.push({ type: 'group', id: el.dataset.groupId });
+      existingElements.set('group-' + el.dataset.groupId, el);
+      currentOrder.push({ type: 'group', id: el.dataset.groupId });
     }
   });
 
-  // コンテナをクリア
-  tabsContainer.innerHTML = '';
-
-  // 既存の順序を維持しながら要素を追加
-  const processedGroups = new Set();
-  const processedTabs = new Set();
-
-  elementOrder.forEach(item => {
-    if (item.type === 'group') {
-      const group = tabGroups.find(g => g.id === item.id);
-      if (group && !processedGroups.has(item.id)) {
-        let header = existingElements.get(item.id);
-        if (!header) {
-          header = createGroupHeader(group);
-        }
-        tabsContainer.appendChild(header);
-        processedGroups.add(item.id);
-
-        // このグループに属するタブを追加
-        tabs.forEach(tab => {
-          if (tab.groupId === item.id && !tab.isInternal && !processedTabs.has(tab.id)) {
-            const tabElement = existingElements.get(tab.id);
-            if (tabElement) {
-              // 折りたたまれている場合は非表示
-              if (group.isCollapsed) {
-                tabElement.style.display = 'none';
-              } else {
-                tabElement.style.display = 'flex';
-              }
-              tabsContainer.appendChild(tabElement);
-              processedTabs.add(tab.id);
-            }
-          }
-        });
-      }
-    } else if (item.type === 'tab') {
-      const tab = tabs.find(t => t.id === item.id);
-      if (tab && !tab.isInternal && !processedTabs.has(item.id)) {
-        // グループに属していない、または既にグループが処理されている場合
-        if (!tab.groupId || processedGroups.has(tab.groupId)) {
-          // グループに属している場合は既に追加されているのでスキップ
-          if (!tab.groupId) {
-            const tabElement = existingElements.get(item.id);
-            if (tabElement) {
-              tabElement.style.display = 'flex';
-              tabsContainer.appendChild(tabElement);
-              processedTabs.add(item.id);
-            }
-          }
-        }
-      }
-    }
-  });
-
-  // 新しいタブやグループを追加（まだ処理されていないもの）
+  // グループに属するタブの可視性を更新
   tabs.forEach(tab => {
-    if (tab.isInternal || processedTabs.has(tab.id)) return;
-
     if (tab.groupId) {
       const group = tabGroups.find(g => g.id === tab.groupId);
-
-      // グループヘッダーを追加（まだ追加していない場合）
-      if (group && !processedGroups.has(tab.groupId)) {
-        let header = existingElements.get(tab.groupId);
-        if (!header) {
-          header = createGroupHeader(group);
-        }
-        tabsContainer.appendChild(header);
-        processedGroups.add(tab.groupId);
+      const tabElement = existingElements.get('tab-' + tab.id);
+      if (tabElement && group) {
+        tabElement.style.display = group.isCollapsed ? 'none' : 'flex';
       }
-    }
-
-    // タブ要素を追加
-    const tabElement = existingElements.get(tab.id);
-    if (tabElement) {
-      // 折りたたまれている場合は非表示
-      if (tab.groupId) {
-        const group = tabGroups.find(g => g.id === tab.groupId);
-        if (group && group.isCollapsed) {
-          tabElement.style.display = 'none';
-        } else {
-          tabElement.style.display = 'flex';
-        }
-      }
-      tabsContainer.appendChild(tabElement);
-      processedTabs.add(tab.id);
     }
   });
 }
@@ -1711,19 +1615,34 @@ function addTabToGroup(tabId, groupId) {
   const tab = tabs.find(t => t.id === tabId);
   if (!tab || tab.isInternal) return;
 
+  const group = tabGroups.find(g => g.id === groupId);
+  if (!group) return;
+
   tab.groupId = groupId;
 
-  // タブ要素にグループカラーを適用
+  const tabsContainer = document.getElementById('tabs');
   const tabElement = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
+
   if (tabElement) {
-    const group = tabGroups.find(g => g.id === groupId);
-    if (group) {
-      tabElement.style.borderBottom = `3px solid ${group.color}`;
+    // グループカラーを適用
+    tabElement.style.borderBottom = `3px solid ${group.color}`;
+
+    // グループヘッダーを探す
+    let groupHeader = document.querySelector(`.tab-group-header[data-group-id="${groupId}"]`);
+
+    // グループヘッダーが存在しない場合は作成
+    if (!groupHeader) {
+      groupHeader = createGroupHeader(group);
+      // タブの直前に挿入
+      tabElement.parentNode.insertBefore(groupHeader, tabElement);
+    } else {
+      // グループヘッダーの直後に移動
+      const nextSibling = groupHeader.nextSibling;
+      if (nextSibling !== tabElement) {
+        groupHeader.after(tabElement);
+      }
     }
   }
-
-  // タブバーを再構築
-  rebuildTabBar();
 
   saveTabs();
 }
@@ -1749,15 +1668,19 @@ function removeTabFromGroup(tabId) {
   if (oldGroupId) {
     const groupTabs = tabs.filter(t => t.groupId === oldGroupId && !t.isInternal);
     if (groupTabs.length === 0) {
+      // グループヘッダーを削除
+      const groupHeader = document.querySelector(`.tab-group-header[data-group-id="${oldGroupId}"]`);
+      if (groupHeader) {
+        groupHeader.remove();
+      }
+
+      // グループをリストから削除
       const groupIndex = tabGroups.findIndex(g => g.id === oldGroupId);
       if (groupIndex !== -1) {
         tabGroups.splice(groupIndex, 1);
       }
     }
   }
-
-  // タブバーを再構築
-  rebuildTabBar();
 
   saveTabs();
 }
@@ -1818,13 +1741,18 @@ function showGroupManagementMenu(groupId, x, y) {
             }
           });
 
+          // グループヘッダーを削除
+          const groupHeader = document.querySelector(`.tab-group-header[data-group-id="${groupId}"]`);
+          if (groupHeader) {
+            groupHeader.remove();
+          }
+
           // グループを削除
           const groupIndex = tabGroups.findIndex(g => g.id === groupId);
           if (groupIndex !== -1) {
             tabGroups.splice(groupIndex, 1);
           }
 
-          rebuildTabBar();
           saveTabs();
         }
       }
@@ -2285,7 +2213,16 @@ function showRenameGroupModal(groupId) {
     const newName = nameInput.value.trim();
     if (newName) {
       group.name = newName;
-      rebuildTabBar();
+
+      // グループヘッダーの名前を更新
+      const groupHeader = document.querySelector(`.tab-group-header[data-group-id="${groupId}"]`);
+      if (groupHeader) {
+        const nameSpan = groupHeader.querySelector('.group-name');
+        if (nameSpan) {
+          nameSpan.textContent = newName;
+        }
+      }
+
       saveTabs();
       modal.style.display = 'none';
       cleanup();
