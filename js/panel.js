@@ -703,6 +703,29 @@ async function restoreTabs() {
       switchTab(tabs[activeTabIndex].id);
     }
 
+    // グループヘッダーを作成
+    const tabsContainer = document.getElementById('tabs');
+    const processedGroups = new Set();
+
+    tabs.forEach(tab => {
+      if (tab.groupId && !processedGroups.has(tab.groupId)) {
+        processedGroups.add(tab.groupId);
+        const group = tabGroups.find(g => g.id === tab.groupId);
+        if (group) {
+          // このグループの最初のタブを見つける
+          const firstTabInGroup = tabs.find(t => t.groupId === tab.groupId);
+          if (firstTabInGroup) {
+            const firstTabElement = tabsContainer.querySelector(`.tab[data-tab-id="${firstTabInGroup.id}"]`);
+            if (firstTabElement) {
+              // グループヘッダーを作成してタブの前に挿入
+              const groupHeader = createGroupHeader(group);
+              tabsContainer.insertBefore(groupHeader, firstTabElement);
+            }
+          }
+        }
+      }
+    });
+
     // タブバーを再構築
     rebuildTabBar();
 
@@ -1515,6 +1538,10 @@ function setupGroupDragAndDrop(headerElement) {
 
   headerElement.addEventListener('dragend', (e) => {
     headerElement.classList.remove('dragging');
+
+    // DOM上のタブの順序に合わせてtabs配列を並び替え
+    updateTabsOrder();
+
     draggedTabElement = null;
     saveTabs();
   });
@@ -1530,10 +1557,33 @@ function setupGroupDragAndDrop(headerElement) {
     const tabsContainer = document.getElementById('tabs');
     const afterElement = getDragAfterElement(tabsContainer, e.clientX);
 
-    if (afterElement == null) {
-      tabsContainer.appendChild(draggedTabElement);
+    // グループヘッダーをドラッグしている場合は、グループ内のタブも一緒に移動
+    if (draggedTabElement.classList.contains('tab-group-header')) {
+      const groupId = draggedTabElement.dataset.groupId;
+      const groupTabs = Array.from(tabsContainer.querySelectorAll(`.tab[data-tab-id]`))
+        .filter(tab => {
+          const tabId = tab.dataset.tabId;
+          const tabData = tabs.find(t => t.id === tabId);
+          return tabData && tabData.groupId === groupId;
+        });
+
+      // ヘッダーとタブをまとめて移動
+      if (afterElement == null) {
+        tabsContainer.appendChild(draggedTabElement);
+        groupTabs.forEach(tab => tabsContainer.appendChild(tab));
+      } else {
+        tabsContainer.insertBefore(draggedTabElement, afterElement);
+        groupTabs.forEach(tab => {
+          tabsContainer.insertBefore(tab, afterElement);
+        });
+      }
     } else {
-      tabsContainer.insertBefore(draggedTabElement, afterElement);
+      // 通常のタブのドラッグ
+      if (afterElement == null) {
+        tabsContainer.appendChild(draggedTabElement);
+      } else {
+        tabsContainer.insertBefore(draggedTabElement, afterElement);
+      }
     }
   });
 
