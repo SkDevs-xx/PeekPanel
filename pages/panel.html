@@ -458,6 +458,180 @@
         opacity: 1;
       }
     }
+
+    /* グループ作成モーダル */
+    .group-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10002;
+    }
+
+    .group-modal-content {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .group-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .group-modal-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .group-modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .group-modal-close:hover {
+      background: var(--hover-bg);
+      color: var(--text-primary);
+    }
+
+    .group-modal-body {
+      padding: 20px;
+    }
+
+    .group-form-field {
+      margin-bottom: 20px;
+    }
+
+    .group-form-field:last-child {
+      margin-bottom: 0;
+    }
+
+    .group-form-field label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .group-form-field input {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .group-form-field input:focus {
+      border-color: var(--text-secondary);
+      background: var(--bg-secondary);
+    }
+
+    .group-color-picker {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .group-color-option {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .group-color-option:hover {
+      transform: scale(1.1);
+    }
+
+    .group-color-option.selected {
+      border-color: white;
+      box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px currentColor;
+    }
+
+    .group-color-option .checkmark {
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      display: none;
+    }
+
+    .group-color-option.selected .checkmark {
+      display: block;
+    }
+
+    .group-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .group-modal-button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .group-modal-button.secondary {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .group-modal-button.secondary:hover {
+      background: var(--button-hover-bg);
+    }
+
+    .group-modal-button.primary {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .group-modal-button.primary:hover {
+      background: #1557b0;
+    }
+
+    .group-modal-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 
@@ -526,6 +700,50 @@
       </div>
     </div>
   </template>
+
+  <!-- グループ作成モーダル -->
+  <div id="createGroupModal" class="group-modal" style="display: none;">
+    <div class="group-modal-content">
+      <div class="group-modal-header">
+        <h2>新しいグループを作成</h2>
+        <button class="group-modal-close" id="closeGroupModal">✕</button>
+      </div>
+      <div class="group-modal-body">
+        <div class="group-form-field">
+          <label for="groupNameInput">グループ名</label>
+          <input type="text" id="groupNameInput" placeholder="グループ名を入力..." maxlength="30">
+        </div>
+        <div class="group-form-field">
+          <label>グループの色</label>
+          <div class="group-color-picker" id="groupColorPicker"></div>
+        </div>
+      </div>
+      <div class="group-modal-footer">
+        <button class="group-modal-button secondary" id="cancelGroupModal">キャンセル</button>
+        <button class="group-modal-button primary" id="confirmGroupModal">作成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- グループ名変更モーダル -->
+  <div id="renameGroupModal" class="group-modal" style="display: none;">
+    <div class="group-modal-content">
+      <div class="group-modal-header">
+        <h2>グループ名を変更</h2>
+        <button class="group-modal-close" id="closeRenameModal">✕</button>
+      </div>
+      <div class="group-modal-body">
+        <div class="group-form-field">
+          <label for="renameGroupInput">グループ名</label>
+          <input type="text" id="renameGroupInput" placeholder="グループ名を入力..." maxlength="30">
+        </div>
+      </div>
+      <div class="group-modal-footer">
+        <button class="group-modal-button secondary" id="cancelRenameModal">キャンセル</button>
+        <button class="group-modal-button primary" id="confirmRenameModal">変更</button>
+      </div>
+    </div>
+  </div>
 
   <script src="../js/panel.js"></script>
 </body>
