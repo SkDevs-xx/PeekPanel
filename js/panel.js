@@ -841,7 +841,17 @@ document.getElementById('newTab').addEventListener('click', () => {
 // 閉じたタブボタン
 document.getElementById('settingsButton').addEventListener('click', () => {
   const settingsUrl = chrome.runtime.getURL('pages/settings.html');
-  createTab(settingsUrl, true, true); // 内部ページとして開く
+
+  // 既に開いている設定タブを探す
+  const existingTab = tabs.find(t => t.isInternal && t.url.includes('settings.html'));
+
+  if (existingTab) {
+    // 既存のタブに切り替え
+    switchTab(existingTab.id);
+  } else {
+    // 新しいタブを作成
+    createTab(settingsUrl, true, true); // 内部ページとして開く
+  }
 });
 
 // 右クリックメニューから開いたURL

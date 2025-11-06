@@ -104,7 +104,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2 id="modalTitle">プロンプトを編集</h2>
-        <button class="modal-close" onclick="closePromptModal()">✕</button>
+        <button class="modal-close" id="modalCloseButton">✕</button>
       </div>
 
       <div class="modal-body">
@@ -131,8 +131,28 @@
       </div>
 
       <div class="modal-footer">
-        <button class="button button-normal" onclick="closePromptModal()">キャンセル</button>
+        <button class="button button-normal" id="modalCancelButton">キャンセル</button>
         <button class="button button-primary" id="savePromptButton">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 削除確認モーダル -->
+  <div id="deleteConfirmModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>プロンプトを削除</h2>
+        <button class="modal-close" id="deleteModalCloseButton">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="margin: 0; color: var(--text-primary);">このプロンプトを削除しますか？</p>
+        <p style="margin: 8px 0 0 0; font-size: 12px; color: var(--text-secondary);">この操作は取り消せません。</p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="button button-normal" id="deleteModalCancelButton">キャンセル</button>
+        <button class="button button-danger" id="confirmDeleteButton">削除</button>
       </div>
     </div>
   </div>

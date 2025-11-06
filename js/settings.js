@@ -64,6 +64,22 @@ async function loadSettings() {
   }
 }
 
+// トースト通知を表示
+function showToast(message, type = 'success') {
+  const statusMessage = document.getElementById('statusMessage');
+  statusMessage.textContent = type === 'success' ? `✓ ${message}` : message;
+  statusMessage.className = `status-message ${type} show`;
+
+  // 2秒後にフェードアウト開始
+  setTimeout(() => {
+    statusMessage.style.animation = 'slideUp 0.3s ease-out forwards';
+    setTimeout(() => {
+      statusMessage.classList.remove('show');
+      statusMessage.style.animation = '';
+    }, 300);
+  }, 2000);
+}
+
 // 設定を保存
 async function saveSettings() {
   const autoSubmit = document.getElementById('auto-submit')?.checked || false;
@@ -86,18 +102,7 @@ async function saveSettings() {
   });
 
   // 保存成功メッセージを表示
-  const statusMessage = document.getElementById('statusMessage');
-  statusMessage.textContent = '✓ 設定を保存しました';
-  statusMessage.className = 'status-message success show';
-
-  // 2秒後にフェードアウト開始
-  setTimeout(() => {
-    statusMessage.style.animation = 'slideUp 0.3s ease-out forwards';
-    setTimeout(() => {
-      statusMessage.classList.remove('show');
-      statusMessage.style.animation = '';
-    }, 300);
-  }, 2000);
+  showToast('設定を保存しました');
 }
 
 // 保存ボタンのイベントリスナー
@@ -166,14 +171,31 @@ function createPromptCard(prompt) {
     <div class="prompt-text">${prompt.prompt.replace(/{text}/g, '{選択テキスト}')}</div>
     <div class="prompt-actions">
       <label class="toggle-label">
-        <input type="checkbox" ${prompt.enabled ? 'checked' : ''}
-               onchange="togglePrompt('${prompt.id}', this.checked)">
+        <input type="checkbox" ${prompt.enabled ? 'checked' : ''} data-prompt-id="${prompt.id}">
         有効
       </label>
-      <button class="button button-small button-normal" onclick="editPrompt('${prompt.id}')">編集</button>
-      ${!prompt.isDefault ? `<button class="button button-small button-danger" onclick="deletePrompt('${prompt.id}')">削除</button>` : ''}
+      <button class="button button-small button-normal edit-prompt-btn" data-prompt-id="${prompt.id}">編集</button>
+      ${!prompt.isDefault ? `<button class="button button-small button-danger delete-prompt-btn" data-prompt-id="${prompt.id}">削除</button>` : ''}
     </div>
   `;
+
+  // イベントリスナーを追加
+  const checkbox = card.querySelector('input[type="checkbox"]');
+  checkbox.addEventListener('change', (e) => {
+    togglePrompt(prompt.id, e.target.checked);
+  });
+
+  const editBtn = card.querySelector('.edit-prompt-btn');
+  editBtn.addEventListener('click', () => {
+    editPrompt(prompt.id);
+  });
+
+  if (!prompt.isDefault) {
+    const deleteBtn = card.querySelector('.delete-prompt-btn');
+    deleteBtn.addEventListener('click', () => {
+      deletePrompt(prompt.id);
+    });
+  }
 
   return card;
 }
@@ -219,6 +241,9 @@ function addNewPrompt() {
     // UIを更新
     closePromptModal();
     loadCustomPrompts();
+
+    // 成功メッセージを表示
+    showToast('プロンプトを追加しました');
   };
 }
 
@@ -256,6 +281,12 @@ async function editPrompt(promptId) {
 
     // デフォルトプロンプトの場合はカスタムプロンプトとして保存
     if (prompt.isDefault) {
+      // デフォルトを無効化
+      if (!disabledDefaultPrompts.includes(promptId)) {
+        disabledDefaultPrompts.push(promptId);
+        await chrome.storage.sync.set({ disabledDefaultPrompts });
+      }
+
       // デフォルトをコピーしてカスタムに
       const newCustomPrompt = {
         id: `custom-${Date.now()}`,
@@ -280,20 +311,33 @@ async function editPrompt(promptId) {
     // UIを更新
     closePromptModal();
     loadCustomPrompts();
+
+    // 成功メッセージを表示
+    showToast('プロンプトを保存しました');
   };
 }
 
 // プロンプトを削除
-async function deletePrompt(promptId) {
-  if (!confirm('このプロンプトを削除しますか？')) {
-    return;
-  }
+function deletePrompt(promptId) {
+  // 削除確認モーダルを表示
+  const modal = document.getElementById('deleteConfirmModal');
+  modal.style.display = 'flex';
 
-  const { customPrompts } = await chrome.storage.sync.get({ customPrompts: [] });
-  const filtered = customPrompts.filter(p => p.id !== promptId);
+  // 削除ボタンのイベント（一度だけ実行）
+  const confirmBtn = document.getElementById('confirmDeleteButton');
+  confirmBtn.onclick = async () => {
+    const { customPrompts } = await chrome.storage.sync.get({ customPrompts: [] });
+    const filtered = customPrompts.filter(p => p.id !== promptId);
 
-  await saveCustomPrompts(filtered);
-  loadCustomPrompts();
+    await saveCustomPrompts(filtered);
+    loadCustomPrompts();
+
+    // モーダルを閉じる
+    closeDeleteConfirmModal();
+
+    // 削除成功メッセージを表示
+    showToast('プロンプトを削除しました');
+  };
 }
 
 // プロンプトの有効/無効を切り替え
@@ -331,9 +375,22 @@ function closePromptModal() {
   document.getElementById('promptModal').style.display = 'none';
 }
 
+// 削除確認モーダルを閉じる
+function closeDeleteConfirmModal() {
+  document.getElementById('deleteConfirmModal').style.display = 'none';
+}
+
 // 初期化
 loadSettings();
 loadCustomPrompts();
 
 // 新規追加ボタン
 document.getElementById('addPromptButton').addEventListener('click', addNewPrompt);
+
+// プロンプト編集モーダル閉じるボタン
+document.getElementById('modalCloseButton').addEventListener('click', closePromptModal);
+document.getElementById('modalCancelButton').addEventListener('click', closePromptModal);
+
+// 削除確認モーダル閉じるボタン
+document.getElementById('deleteModalCloseButton').addEventListener('click', closeDeleteConfirmModal);
+document.getElementById('deleteModalCancelButton').addEventListener('click', closeDeleteConfirmModal);
