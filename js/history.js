@@ -1,3 +1,15 @@
+// ファビコン取得関数（getRealFaviconのシンプル版）
+function getRealFavicon(url) {
+  if (!url) return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+
+  try {
+    const urlObj = new URL(url);
+    return `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
+  } catch {
+    return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+  }
+}
+
 // 履歴を表示
 async function displayHistory() {
   const container = document.getElementById('historyContainer');
@@ -17,9 +29,25 @@ async function displayHistory() {
 
     const favicon = document.createElement('img');
     favicon.className = 'history-favicon';
-    favicon.src = item.favicon || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+
+    // faviconUrlかurlからファビコンを取得
+    const faviconSrc = item.faviconUrl || getRealFavicon(item.url);
+    favicon.src = faviconSrc;
+
+    // フォールバック処理
     favicon.onerror = () => {
-      favicon.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+      try {
+        // Google Favicon APIを試す
+        const domain = new URL(item.url).hostname;
+        favicon.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+
+        favicon.onerror = () => {
+          // 最終フォールバック
+          favicon.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+        };
+      } catch {
+        favicon.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+      }
     };
 
     const info = document.createElement('div');
@@ -100,7 +128,7 @@ async function restoreTab(index) {
 // 閉じるボタン
 document.getElementById('closeButton').addEventListener('click', () => {
   window.parent.postMessage({
-    type: 'closeHistoryPage'
+    type: 'closeHistory'
   }, '*');
 });
 

@@ -19,7 +19,7 @@
     "<all_urls>"
   ],
   "side_panel": {
-    "default_path": "pages/panel.html"
+    "default_path": "pages/main.html"
   },
   "action": {
     "default_title": "サイドパネルを開く"

@@ -40,11 +40,11 @@ chrome.runtime.onInstalled.addListener(async () => {
   // 既存のメニューをすべて削除
   chrome.contextMenus.removeAll();
 
-  // 基本メニュー
+  // ページ右クリックメニュー（リンクタグ以外）
   chrome.contextMenus.create({
     id: 'openInSubPanel',
     title: 'サブパネルで開く',
-    contexts: ['link', 'page']
+    contexts: ['page'] // リンクタグは除外、ページのみ
   });
 
   // カスタムプロンプトメニューを作成
@@ -120,18 +120,25 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  // リンクまたはページのURL
-  let url = info.linkUrl || info.pageUrl;
+  // ページ右クリック時の処理（「サブパネルで開く」）
+  if (info.menuItemId === 'openInSubPanel') {
+    // サイドパネル内のiframeからのクリックの場合は何もしない
+    // frameId !== 0 の場合はiframe内からのクリック
+    if (info.frameId && info.frameId !== 0) {
+      console.log('[PeekPanel] Context menu clicked from iframe (frameId:', info.frameId, '), ignoring');
+      return;
+    }
 
-  if (url) {
-    // サイドパネルを開く
-    await chrome.sidePanel.open({ windowId: tab.windowId });
+    const url = info.pageUrl;
 
-    // URLをストレージに保存（panel.jsで読み取る）
-    await chrome.storage.local.set({ pendingUrl: url });
+    if (url) {
+      // サブパネルを開く
+      await chrome.sidePanel.open({ windowId: tab.windowId });
 
-    // ページ全体を右クリックした場合（リンクではない）は元のタブを閉じる（移動）
-    if (info.pageUrl && !info.linkUrl) {
+      // URLをストレージに保存（panel.jsで読み取る）
+      await chrome.storage.local.set({ pendingUrl: url });
+
+      // ページ全体を右クリックした場合は元のタブを閉じる（移動）
       // 最後の1つのタブの場合、新しいタブを作成してから閉じる
       const tabsInWindow = await chrome.tabs.query({ windowId: tab.windowId });
 
@@ -151,11 +158,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && (changes.customPrompts || changes.disabledDefaultPrompts)) {
     // メニューを再生成
     chrome.contextMenus.removeAll(() => {
-      // 基本メニュー
+      // ページ右クリックメニュー（リンクタグ以外）
       chrome.contextMenus.create({
         id: 'openInSubPanel',
         title: 'サブパネルで開く',
-        contexts: ['link', 'page']
+        contexts: ['page'] // リンクタグは除外、ページのみ
       });
 
       // カスタムプロンプトメニューを作成

@@ -111,14 +111,14 @@ document.getElementById('saveButton').addEventListener('click', saveSettings);
 // 閉じるボタンのイベントリスナー
 document.getElementById('closeButton').addEventListener('click', () => {
   window.parent.postMessage({
-    type: 'closeSettingsPage'
+    type: 'closeSettings'
   }, '*');
 });
 
 // 履歴ボタンのイベントリスナー
 document.getElementById('historyButton').addEventListener('click', () => {
   window.parent.postMessage({
-    type: 'openHistoryPage'
+    type: 'openHistory'
   }, '*');
 });
 

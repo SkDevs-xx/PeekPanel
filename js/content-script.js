@@ -10,7 +10,7 @@ if (window.self !== window.top) {
       const selectedText = window.getSelection().toString().trim();
 
       if (selectedText) {
-        // デフォルトのコンテキストメニューを無効化
+        // テキスト選択時のみデフォルトのコンテキストメニューを無効化
         e.preventDefault();
 
         // 親ウィンドウ（panel.js）にメッセージを送信
@@ -79,6 +79,58 @@ if (window.self !== window.top) {
         sendTitle();
       }
     }, 1000);
+
+    // 親ウィンドウからのミュート/ミュート解除メッセージを受信
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'muteMedia') {
+        // すべてのaudio/video要素をミュート
+        document.querySelectorAll('audio, video').forEach(media => {
+          media.muted = true;
+        });
+      } else if (event.data.type === 'unmuteMedia') {
+        // すべてのaudio/video要素のミュートを解除
+        document.querySelectorAll('audio, video').forEach(media => {
+          media.muted = false;
+        });
+      }
+    });
+
+    // 新しく追加されるaudio/video要素も監視してミュート状態を適用
+    let currentMuteState = false;
+    const mediaObserver = new MutationObserver((mutations) => {
+      if (currentMuteState) {
+        document.querySelectorAll('audio, video').forEach(media => {
+          media.muted = true;
+        });
+      }
+    });
+
+    // body要素が存在する場合に監視を開始
+    function startMediaObserver() {
+      if (document.body) {
+        mediaObserver.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+      } else {
+        setTimeout(startMediaObserver, 100);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', startMediaObserver);
+    } else {
+      startMediaObserver();
+    }
+
+    // ミュート状態を更新
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'muteMedia') {
+        currentMuteState = true;
+      } else if (event.data.type === 'unmuteMedia') {
+        currentMuteState = false;
+      }
+    });
   } catch (error) {
     // Extension context invalidatedエラーを無視
     // 拡張機能のリロード後に古いコンテンツスクリプトが実行される場合に発生
