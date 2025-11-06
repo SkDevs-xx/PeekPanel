@@ -278,9 +278,8 @@ function closeTab(tabId) {
   const normalTabs = tabs.filter(t => !t.isInternal);
   if (!tab.isInternal && normalTabs.length <= 1) return;
 
-  // 履歴に追加（履歴ページ自体は除外）
-  const historyUrl = chrome.runtime.getURL('pages/history.html');
-  if (tab.url && tab.url !== 'about:blank' && tab.url !== historyUrl) {
+  // 履歴に追加（内部ページ（設定ページ、履歴ページ）とabout:blankは除外）
+  if (tab.url && tab.url !== 'about:blank' && !tab.isInternal) {
     const tabElement = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
     const favicon = tabElement?.querySelector('.tab-favicon')?.src || '';
 

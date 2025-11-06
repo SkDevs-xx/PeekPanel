@@ -104,14 +104,51 @@ document.getElementById('closeButton').addEventListener('click', () => {
   }, '*');
 });
 
+// トースト通知を表示
+function showToast(message, type = 'success') {
+  const statusMessage = document.getElementById('statusMessage');
+  statusMessage.textContent = type === 'success' ? `✓ ${message}` : message;
+  statusMessage.className = `status-message ${type} show`;
+
+  // 2秒後にフェードアウト開始
+  setTimeout(() => {
+    statusMessage.style.animation = 'slideUp 0.3s ease-out forwards';
+    setTimeout(() => {
+      statusMessage.classList.remove('show');
+      statusMessage.style.animation = '';
+    }, 300);
+  }, 2000);
+}
+
+// 履歴クリア確認モーダルを閉じる
+function closeClearConfirmModal() {
+  document.getElementById('clearConfirmModal').style.display = 'none';
+}
+
 // 履歴クリアボタン
-document.getElementById('clearButton').addEventListener('click', async () => {
-  if (confirm('すべての履歴を削除してもよろしいですか？')) {
+document.getElementById('clearButton').addEventListener('click', () => {
+  // 履歴クリア確認モーダルを表示
+  const modal = document.getElementById('clearConfirmModal');
+  modal.style.display = 'flex';
+
+  // クリアボタンのイベント
+  const confirmBtn = document.getElementById('confirmClearButton');
+  confirmBtn.onclick = async () => {
     await chrome.storage.local.set({ closedTabsHistory: [] });
     document.getElementById('historyContainer').innerHTML = '';
     displayHistory();
-  }
+
+    // モーダルを閉じる
+    closeClearConfirmModal();
+
+    // 成功メッセージを表示
+    showToast('履歴をクリアしました');
+  };
 });
+
+// 履歴クリア確認モーダル閉じるボタン
+document.getElementById('clearModalCloseButton').addEventListener('click', closeClearConfirmModal);
+document.getElementById('clearModalCancelButton').addEventListener('click', closeClearConfirmModal);
 
 // 初期化
 displayHistory();

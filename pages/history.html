@@ -17,6 +17,27 @@
   </div>
 
   <button id="clearButton" class="button button-danger" style="margin-top: 12px;">履歴をクリア</button>
+  <div class="status-message" id="statusMessage"></div>
+
+  <!-- 履歴クリア確認モーダル -->
+  <div id="clearConfirmModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>履歴をクリア</h2>
+        <button class="modal-close" id="clearModalCloseButton">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="margin: 0; color: var(--text-primary);">すべての履歴を削除してもよろしいですか？</p>
+        <p style="margin: 8px 0 0 0; font-size: 12px; color: var(--text-secondary);">この操作は取り消せません。</p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="button button-normal" id="clearModalCancelButton">キャンセル</button>
+        <button class="button button-danger" id="confirmClearButton">クリア</button>
+      </div>
+    </div>
+  </div>
 
   <script src="../js/history.js"></script>
 </body>
