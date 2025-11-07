@@ -357,16 +357,23 @@ export class TabUI {
    * この関数はGroupUIと協力してタブバー全体を再構築します
    */
   rebuildTabBar(groupUI) {
-    // 既存のタブ要素を保持
+    // ステップ1: 既存のタブ要素を保持
     const existingTabElements = new Map();
-    Array.from(this.tabsContainer.querySelectorAll('.tab')).forEach(el => {
+    this.tabsContainer.querySelectorAll('.tab').forEach(el => {
       existingTabElements.set(el.dataset.tabId, el);
     });
 
-    // 既存のグループコンテナとヘッダーを削除
+    // ステップ2: すべてのタブ要素を一旦タブバーから取り出す（親要素から切り離す）
+    existingTabElements.forEach(el => {
+      if (el.parentElement) {
+        el.parentElement.removeChild(el);
+      }
+    });
+
+    // ステップ3: グループコンテナとヘッダーを削除
     this.tabsContainer.querySelectorAll('.group-container, .tab-group-header').forEach(el => el.remove());
 
-    // グループごとにタブを分類
+    // ステップ4: グループごとにタブを分類
     const groupedTabs = new Map();
     const ungroupedTabs = [];
 
@@ -383,15 +390,16 @@ export class TabUI {
       }
     });
 
-    // GroupUIを使ってグループコンテナを作成
+    // ステップ5: GroupUIを使ってグループコンテナを作成
     if (groupUI) {
       groupUI.renderAllGroups(groupedTabs, existingTabElements);
     }
 
-    // グループ化されていないタブを配置
+    // ステップ6: グループ化されていないタブのみをタブバー直下に配置
     ungroupedTabs.forEach(tab => {
       const tabElement = existingTabElements.get(tab.id);
-      if (tabElement) {
+      if (tabElement && !tabElement.parentElement) {
+        // 親要素がない（まだ配置されていない）タブのみを配置
         tabElement.classList.remove('grouped');
         this.tabsContainer.appendChild(tabElement);
       }

@@ -151,6 +151,18 @@ export class GroupUI {
       });
 
       this.tabsContainer.appendChild(groupContainer);
+
+      // グループが展開されている場合、position: fixed のスタイルを適用
+      if (!group.isCollapsed) {
+        const tabsContainer = document.querySelector('.tabs-container');
+        if (tabsContainer) {
+          const containerRect = tabsContainer.getBoundingClientRect();
+          tabsWrapper.style.top = `${containerRect.bottom}px`;
+          tabsWrapper.style.left = '0';
+          tabsWrapper.style.width = '100vw';
+          tabsWrapper.style.borderBottom = `3px solid ${group.color}`;
+        }
+      }
     });
   }
 

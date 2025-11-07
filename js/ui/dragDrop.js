@@ -81,6 +81,25 @@ export class DragDropHandler {
         return;
       }
 
+      // ドラッグ中のタブの親要素をチェック
+      const draggedParent = this.draggedElement.parentElement;
+      const isInGroupWrapper = draggedParent && draggedParent.classList.contains('group-tabs-wrapper');
+
+      // グループ内タブの場合、通常タブエリアへの移動を防ぐ
+      if (isInGroupWrapper) {
+        // 同じgroup-tabs-wrapper内でのみドラッグ可能
+        if (tabElement.parentElement === draggedParent) {
+          const afterElement = this.getDragAfterElementInGroup(draggedParent, e.clientX);
+          if (afterElement == null) {
+            draggedParent.appendChild(this.draggedElement);
+          } else {
+            draggedParent.insertBefore(this.draggedElement, afterElement);
+          }
+        }
+        return; // グループ内タブは通常タブエリアに移動させない
+      }
+
+      // 通常タブのドラッグ処理
       const afterElement = this.getDragAfterElement(this.tabsContainer, e.clientX);
 
       if (afterElement == null) {
