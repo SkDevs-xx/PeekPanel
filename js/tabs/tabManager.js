@@ -1,5 +1,6 @@
 import { EventEmitter } from '../utils/eventEmitter.js';
 import { getTabTitle } from '../utils/urlHelper.js';
+import { PriorityQueue } from '../utils/priorityQueue.js';
 
 /**
  * タブ管理クラス
@@ -289,6 +290,7 @@ export class TabManager extends EventEmitter {
 
   /**
    * すべてのタブをチェックして自動スリープ
+   * 優先度キューを使用して最適化（古いタブから順にチェック）
    */
   async checkAndSleepTabs() {
     const settings = await this.storage.loadSettings(
@@ -305,6 +307,10 @@ export class TabManager extends EventEmitter {
     const now = Date.now();
     const threshold = settings.autoSleepMinutes * 60 * 1000;
 
+    // 優先度キュー: lastActiveTimeが古い順（Min Heap）
+    const queue = new PriorityQueue((a, b) => a.lastActiveTime - b.lastActiveTime);
+
+    // スリープ対象候補をキューに追加
     this.tabs.forEach(tab => {
       if (tab.id === this.currentTabId) return;
       if (tab.isSleeping) return;
@@ -318,10 +324,21 @@ export class TabManager extends EventEmitter {
         return;
       }
 
-      if (now - tab.lastActiveTime > threshold) {
-        this.sleepTab(tab.id);
-      }
+      queue.push(tab);
     });
+
+    // 古いタブから順にチェック（O(k log n) where k = スリープ対象数）
+    while (!queue.isEmpty()) {
+      const oldestTab = queue.peek();
+
+      if (now - oldestTab.lastActiveTime > threshold) {
+        queue.pop();
+        this.sleepTab(oldestTab.id);
+      } else {
+        // これ以降のタブはまだスリープ不要
+        break;
+      }
+    }
   }
 
   /**

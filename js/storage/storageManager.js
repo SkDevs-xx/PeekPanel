@@ -1,8 +1,87 @@
-// ストレージ管理クラス
+/**
+ * ストレージ管理クラス
+ * chrome.storage.localへの保存と、フォールバック機構を提供
+ */
 export class StorageManager {
   constructor() {
     this.storage = chrome.storage.local;
     this.syncStorage = chrome.storage.sync;
+    this.useFallback = false; // localStorageフォールバック使用フラグ
+  }
+
+  /**
+   * エラーハンドリング付きでストレージに保存
+   * @param {Object} data - 保存するデータ
+   * @param {boolean} useSync - chrome.storage.syncを使用するか
+   * @returns {Promise<void>}
+   */
+  async safeSet(data, useSync = false) {
+    const storage = useSync ? this.syncStorage : this.storage;
+
+    try {
+      await storage.set(data);
+      this.useFallback = false; // 成功したらフォールバックフラグを解除
+    } catch (error) {
+      console.error('[StorageManager] Storage set failed, using localStorage fallback:', error);
+
+      // エラーマネージャーで通知（利用可能な場合）
+      if (typeof ErrorManager !== 'undefined') {
+        try {
+          const { ErrorManager: EM } = await import('../ui/errorManager.js');
+          EM.getInstance()?.handleError(error, {
+            operation: 'storage_set',
+            data: Object.keys(data)
+          });
+        } catch (e) {
+          // ErrorManagerが利用できない場合は無視
+        }
+      }
+
+      // localStorageにフォールバック
+      this.useFallback = true;
+      try {
+        Object.entries(data).forEach(([key, value]) => {
+          localStorage.setItem(`peekpanel_${key}`, JSON.stringify(value));
+        });
+      } catch (fallbackError) {
+        console.error('[StorageManager] localStorage fallback also failed:', fallbackError);
+        throw new Error('ストレージへの保存に失敗しました');
+      }
+    }
+  }
+
+  /**
+   * エラーハンドリング付きでストレージから読み込み
+   * @param {string|Array} keys - 読み込むキー
+   * @param {boolean} useSync - chrome.storage.syncを使用するか
+   * @returns {Promise<Object>}
+   */
+  async safeGet(keys, useSync = false) {
+    const storage = useSync ? this.syncStorage : this.storage;
+
+    try {
+      const result = await storage.get(keys);
+      return result;
+    } catch (error) {
+      console.error('[StorageManager] Storage get failed, using localStorage fallback:', error);
+
+      // localStorageからフォールバック
+      const result = {};
+      const keyArray = Array.isArray(keys) ? keys : [keys];
+
+      keyArray.forEach(key => {
+        try {
+          const value = localStorage.getItem(`peekpanel_${key}`);
+          if (value !== null) {
+            result[key] = JSON.parse(value);
+          }
+        } catch (e) {
+          console.error(`[StorageManager] Failed to read ${key} from localStorage:`, e);
+        }
+      });
+
+      return result;
+    }
   }
 
   /**
@@ -25,7 +104,7 @@ export class StorageManager {
 
     const currentTabIndex = tabs.findIndex(t => t.id === currentTabId && !t.isInternal);
 
-    await this.storage.set({
+    await this.safeSet({
       savedTabs: tabsData,
       currentTabIndex: currentTabIndex
     });
@@ -36,7 +115,7 @@ export class StorageManager {
    * @returns {Promise<{savedTabs: Array, currentTabIndex: number}>}
    */
   async loadTabs() {
-    const result = await this.storage.get(['savedTabs', 'currentTabIndex']);
+    const result = await this.safeGet(['savedTabs', 'currentTabIndex']);
     return {
       savedTabs: result.savedTabs || [],
       currentTabIndex: result.currentTabIndex || 0
@@ -48,7 +127,7 @@ export class StorageManager {
    * @param {Array} tabGroups - タブグループ配列
    */
   async saveTabGroups(tabGroups) {
-    await this.storage.set({ tabGroups });
+    await this.safeSet({ tabGroups });
   }
 
   /**
@@ -56,7 +135,7 @@ export class StorageManager {
    * @returns {Promise<Array>}
    */
   async loadTabGroups() {
-    const { tabGroups } = await this.storage.get('tabGroups');
+    const { tabGroups } = await this.safeGet('tabGroups');
     return (tabGroups || []).map(g => ({
       ...g,
       isCollapsed: g.isCollapsed || false
@@ -70,7 +149,7 @@ export class StorageManager {
   async saveClosedTabsHistory(history) {
     // 最大50件まで保存
     const limitedHistory = history.slice(0, 50);
-    await this.storage.set({ closedTabsHistory: limitedHistory });
+    await this.safeSet({ closedTabsHistory: limitedHistory });
   }
 
   /**
@@ -78,7 +157,7 @@ export class StorageManager {
    * @returns {Promise<Array>}
    */
   async loadClosedTabsHistory() {
-    const { closedTabsHistory } = await this.storage.get('closedTabsHistory');
+    const { closedTabsHistory } = await this.safeGet('closedTabsHistory');
     return closedTabsHistory || [];
   }
 
@@ -87,7 +166,7 @@ export class StorageManager {
    * @param {Object} aiSelection - AI選択情報
    */
   async saveAISelection(aiSelection) {
-    await this.syncStorage.set({ aiSelection });
+    await this.safeSet({ aiSelection }, true);
   }
 
   /**
@@ -95,7 +174,7 @@ export class StorageManager {
    * @returns {Promise<Object>}
    */
   async loadAISelection() {
-    const { aiSelection } = await this.syncStorage.get('aiSelection');
+    const { aiSelection } = await this.safeGet('aiSelection', true);
     return aiSelection || {};
   }
 
@@ -104,7 +183,7 @@ export class StorageManager {
    * @param {Object} settings - 設定オブジェクト
    */
   async saveSettings(settings) {
-    await this.syncStorage.set(settings);
+    await this.safeSet(settings, true);
   }
 
   /**
@@ -114,7 +193,7 @@ export class StorageManager {
    * @returns {Promise<Object>}
    */
   async loadSettings(keys, defaults = {}) {
-    const result = await this.syncStorage.get(keys);
+    const result = await this.safeGet(keys, true);
     return { ...defaults, ...result };
   }
 
@@ -139,7 +218,7 @@ export class StorageManager {
 
     const currentTabIndex = tabs.findIndex(t => t.id === currentTabId && !t.isInternal);
 
-    await this.storage.set({
+    await this.safeSet({
       savedTabs: tabsData,
       currentTabIndex: currentTabIndex,
       tabGroups: tabGroups
@@ -151,7 +230,7 @@ export class StorageManager {
    * @returns {Promise<{savedTabs: Array, currentTabIndex: number, tabGroups: Array}>}
    */
   async loadAll() {
-    const result = await this.storage.get(['savedTabs', 'currentTabIndex', 'tabGroups']);
+    const result = await this.safeGet(['savedTabs', 'currentTabIndex', 'tabGroups']);
     return {
       savedTabs: result.savedTabs || [],
       currentTabIndex: result.currentTabIndex || 0,
