@@ -9,6 +9,8 @@ export class DragDropHandler {
     this.eventHandlers = eventHandlers;
     this.draggedElement = null;
     this.tabsContainer = document.getElementById('tabs');
+    this.isDraggingGroupedTab = false; // グループ内タブフラグ
+    this.draggedTabGroupId = null;     // ドラッグ中のタブのグループID
   }
 
   /**
@@ -45,6 +47,11 @@ export class DragDropHandler {
       this.draggedElement = tabElement;
       tabElement.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
+
+      // グループ内タブかチェックし、情報を保存
+      const parent = tabElement.parentElement;
+      this.isDraggingGroupedTab = parent && parent.classList.contains('group-tabs-wrapper');
+      this.draggedTabGroupId = this.isDraggingGroupedTab ? parent.dataset.groupId : null;
     });
 
     tabElement.addEventListener('dragend', (e) => {
@@ -64,6 +71,8 @@ export class DragDropHandler {
       }
 
       this.draggedElement = null;
+      this.isDraggingGroupedTab = false; // フラグをリセット
+      this.draggedTabGroupId = null;     // グループIDをリセット
 
       // ドラッグ後、開いているグループのタブラッパー位置を更新
       setTimeout(() => {
@@ -81,25 +90,28 @@ export class DragDropHandler {
         return;
       }
 
-      // ドラッグ中のタブの親要素をチェック
-      const draggedParent = this.draggedElement.parentElement;
-      const isInGroupWrapper = draggedParent && draggedParent.classList.contains('group-tabs-wrapper');
+      // ドラッグ開始時に保存したフラグを使用
+      if (this.isDraggingGroupedTab) {
+        // グループ内タブは同じgroup-tabs-wrapper内でのみドラッグ可能
+        const currentParent = tabElement.parentElement;
+        const isInSameGroup = currentParent &&
+                             currentParent.classList.contains('group-tabs-wrapper') &&
+                             currentParent.dataset.groupId === this.draggedTabGroupId;
 
-      // グループ内タブの場合、通常タブエリアへの移動を防ぐ
-      if (isInGroupWrapper) {
-        // 同じgroup-tabs-wrapper内でのみドラッグ可能
-        if (tabElement.parentElement === draggedParent) {
-          const afterElement = this.getDragAfterElementInGroup(draggedParent, e.clientX);
+        if (isInSameGroup) {
+          // 同じグループ内でのみドロップ位置を計算
+          const afterElement = this.getDragAfterElementInGroup(currentParent, e.clientX);
           if (afterElement == null) {
-            draggedParent.appendChild(this.draggedElement);
+            currentParent.appendChild(this.draggedElement);
           } else {
-            draggedParent.insertBefore(this.draggedElement, afterElement);
+            currentParent.insertBefore(this.draggedElement, afterElement);
           }
         }
-        return; // グループ内タブは通常タブエリアに移動させない
+        // 異なるグループまたは通常タブエリアの場合は何もしない
+        return;
       }
 
-      // 通常タブのドラッグ処理
+      // 通常タブのドラッグ処理（グループ外のタブのみ）
       const afterElement = this.getDragAfterElement(this.tabsContainer, e.clientX);
 
       if (afterElement == null) {
@@ -112,6 +124,29 @@ export class DragDropHandler {
     tabElement.addEventListener('drop', (e) => {
       e.preventDefault();
     });
+  }
+
+  /**
+   * グループ内でのドラッグ中の要素の挿入位置を計算
+   * @param {HTMLElement} groupWrapper - グループタブラッパー要素
+   * @param {number} x - マウスのX座標
+   * @returns {HTMLElement|null} 挿入位置の次の要素
+   */
+  getDragAfterElementInGroup(groupWrapper, x) {
+    const draggableElements = [...groupWrapper.children].filter(el =>
+      el.classList.contains('tab') && !el.classList.contains('dragging')
+    );
+
+    return draggableElements.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = x - box.left - box.width / 2;
+
+      if (offset < 0 && offset > closest.offset) {
+        return { offset: offset, element: child };
+      } else {
+        return closest;
+      }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
   }
 
   /**
@@ -153,6 +188,11 @@ export class DragDropHandler {
       e.dataTransfer.dropEffect = 'move';
 
       if (!this.draggedElement || this.draggedElement === containerElement) {
+        return;
+      }
+
+      // グループ内タブをドラッグ中の場合は何もしない
+      if (this.isDraggingGroupedTab) {
         return;
       }
 
@@ -204,6 +244,11 @@ export class DragDropHandler {
       e.dataTransfer.dropEffect = 'move';
 
       if (!this.draggedElement || this.draggedElement === headerElement) {
+        return;
+      }
+
+      // グループ内タブをドラッグ中の場合は何もしない
+      if (this.isDraggingGroupedTab) {
         return;
       }
 
