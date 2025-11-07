@@ -1,5 +1,73 @@
 // AIサービスに自動的にテキストを入力するContent Script
 
+// AI設定オブジェクト (Strategy パターン)
+const AI_CONFIGS = {
+  claude: {
+    name: 'Claude',
+    urlPattern: 'claude.ai',
+    selectors: [
+      '.ProseMirror',
+      'div[contenteditable="true"]',
+      'div[role="textbox"]',
+      'textarea',
+      'div[data-placeholder]'
+    ],
+    timeout: 15000, // Claudeは重いので15秒
+    submitSelectors: [
+      'button[aria-label="Send Message"]',
+      'button[aria-label^="Send"]'
+    ],
+    submitMethod: 'keyboard', // Cmd+Enter送信
+    waitAfterInput: 500,
+    insertMethod: 'execCommand' // execCommandを使用
+  },
+  chatgpt: {
+    name: 'ChatGPT',
+    urlPattern: 'chatgpt.com',
+    selectors: [
+      '#prompt-textarea',
+      'textarea[placeholder*="Message"]',
+      'div[contenteditable="true"]',
+      'textarea',
+      'div[role="textbox"]'
+    ],
+    timeout: 10000,
+    submitSelectors: [
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send"]',
+      'button[type="submit"]',
+      'button:has(svg)',
+      '[data-testid="fruitjuice-send-button"]'
+    ],
+    submitMethod: 'button',
+    waitAfterInput: 300,
+    insertMethod: 'value' // value/textContentを使用
+  },
+  gemini: {
+    name: 'Gemini',
+    urlPattern: 'gemini.google.com',
+    selectors: [
+      'rich-textarea .ql-editor[contenteditable="true"]',
+      '.ql-editor[contenteditable="true"]',
+      'div[contenteditable="true"]',
+      'textarea',
+      'div[role="textbox"]'
+    ],
+    timeout: 10000,
+    submitSelectors: [
+      'button[aria-label*="送信"]',
+      'button[aria-label*="Send"]',
+      'button.send-button',
+      'button[type="submit"]',
+      'button:has(svg)',
+      '[mattooltip*="送信"]'
+    ],
+    submitMethod: 'button',
+    waitAfterInput: 300,
+    insertMethod: 'innerHTML' // innerHTMLを使用
+  }
+};
+
 (async function () {
   try {
     // 拡張機能のコンテキストが有効かチェック
@@ -20,17 +88,20 @@
 
     const currentUrl = window.location.href;
 
-    // Claude用の自動入力
-    if (currentUrl.includes('claude.ai')) {
-      await inputToClaude(pendingCleanupText, pendingPromptType || 'cleanup', pendingAutoSubmit || false);
+    // URL パターンに基づいてAIタイプを判定
+    let aiType = null;
+    for (const [type, config] of Object.entries(AI_CONFIGS)) {
+      if (currentUrl.includes(config.urlPattern)) {
+        aiType = type;
+        break;
+      }
     }
-    // ChatGPT用の自動入力
-    else if (currentUrl.includes('chatgpt.com')) {
-      await inputToChatGPT(pendingCleanupText, pendingPromptType || 'cleanup', pendingAutoSubmit || false);
-    }
-    // Gemini用の自動入力
-    else if (currentUrl.includes('gemini.google.com')) {
-      await inputToGemini(pendingCleanupText, pendingPromptType || 'cleanup', pendingAutoSubmit || false);
+
+    if (aiType) {
+      await inputToAI(aiType, pendingCleanupText, {
+        promptType: pendingPromptType || 'cleanup',
+        autoSubmit: pendingAutoSubmit || false
+      });
     }
 
     // 使用後は削除
@@ -63,242 +134,145 @@ function generatePrompt(text, promptType) {
   return prompts[promptType] || prompts['cleanup'];
 }
 
-// Claude用の入力処理
-async function inputToClaude(text, promptType = 'cleanup', autoSubmit = false) {
+// 統合されたAI入力関数 (Strategy パターン)
+async function inputToAI(aiType, text, options = {}) {
+  const config = AI_CONFIGS[aiType];
+  if (!config) {
+    console.error(`[PeekPanel] Unsupported AI type: ${aiType}`);
+    return;
+  }
+
+  const { promptType = 'cleanup', autoSubmit = false } = options;
   const prompt = generatePrompt(text, promptType);
 
-  // 複数のセレクタを試す（ProseMirrorを優先）
-  const selectors = [
-    '.ProseMirror',
-    'div[contenteditable="true"]',
-    'div[role="textbox"]',
-    'textarea',
-    'div[data-placeholder]'
-  ];
-
+  // 要素待機
   let textarea = null;
-  for (const selector of selectors) {
-    // Claudeは重いので15秒待機
-    textarea = await waitForElement(selector, 15000);
+  for (const selector of config.selectors) {
+    textarea = await waitForElement(selector, config.timeout);
     if (textarea) {
       break;
     }
   }
 
-  if (textarea) {
-    // フォーカス
-    textarea.focus();
+  if (!textarea) {
+    console.warn(`[PeekPanel] ${config.name}の入力欄が見つかりませんでした`);
+    return;
+  }
 
-    // 少し待機してフォーカスが確実に当たるようにする
-    await new Promise(resolve => setTimeout(resolve, 100));
+  // フォーカス設定
+  textarea.focus();
+  await sleep(100);
 
-    // テキストを挿入
-    if (textarea.tagName === 'TEXTAREA') {
-      textarea.value = prompt;
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      textarea.dispatchEvent(new Event('change', { bubbles: true }));
-    } else {
-      // contenteditable要素の場合
-      // document.execCommand を使って確実に入力
-      textarea.focus();
+  // テキスト挿入（AI別の方法を使用）
+  await insertText(textarea, prompt, config.insertMethod);
 
-      // 既存のコンテンツをクリア
-      document.execCommand('selectAll', false, null);
-      document.execCommand('delete', false, null);
+  // イベント発火
+  dispatchInputEvents(textarea);
 
-      // テキストを挿入（改行も正しく処理される）
-      document.execCommand('insertText', false, prompt);
+  // 自動送信
+  if (autoSubmit) {
+    await sleep(config.waitAfterInput);
+    await submitPrompt(textarea, config);
+  }
+}
 
-      // バックアップ方法：execCommandが失敗した場合
-      if (!textarea.textContent || textarea.textContent.trim() === '') {
-        textarea.textContent = prompt;
+// テキスト挿入処理（AIごとの方法）
+async function insertText(element, text, method) {
+  if (method === 'execCommand') {
+    // Claude用: execCommandを使用
+    element.focus();
 
-        // InputEventを発火
-        const inputEvent = new InputEvent('input', {
-          bubbles: true,
-          cancelable: true,
-          inputType: 'insertText',
-          data: prompt
-        });
-        textarea.dispatchEvent(inputEvent);
-      }
+    // 既存のコンテンツをクリア
+    document.execCommand('selectAll', false, null);
+    document.execCommand('delete', false, null);
 
-      // その他のイベントも発火
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      textarea.dispatchEvent(new Event('change', { bubbles: true }));
-    }
+    // テキストを挿入（改行も正しく処理される）
+    document.execCommand('insertText', false, text);
 
-    // 自動送信が有効な場合のみ送信処理を実行
-    if (autoSubmit) {
-      // Claude用はEnterキーで送信（Cmd+Enter / Ctrl+Enter）
-      await new Promise(resolve => setTimeout(resolve, 500)); // 少し待機
+    // バックアップ方法：execCommandが失敗した場合
+    if (!element.textContent || element.textContent.trim() === '') {
+      element.textContent = text;
 
-      // Cmd+Enter (Mac) または Ctrl+Enter (Windows/Linux) を送信
-      const enterEvent = new KeyboardEvent('keydown', {
-        key: 'Enter',
-        code: 'Enter',
-        keyCode: 13,
-        which: 13,
-        metaKey: true,  // Mac用
-        ctrlKey: true,  // Windows/Linux用
+      // InputEventを発火
+      const inputEvent = new InputEvent('input', {
         bubbles: true,
-        cancelable: true
+        cancelable: true,
+        inputType: 'insertText',
+        data: text
       });
-
-      textarea.dispatchEvent(enterEvent);
-
-      // バックアップ: キーイベントで送信できなかった場合、ボタンを探す
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const parentForm = textarea.closest('form') || textarea.closest('[class*="composer"]') || document;
-      const submitSelectors = [
-        'button[aria-label="Send Message"]',
-        'button[aria-label^="Send"]'
-      ];
-
-      let submitButton = null;
-      for (const selector of submitSelectors) {
-        submitButton = parentForm.querySelector(selector);
-        if (submitButton && !submitButton.disabled && submitButton.offsetParent !== null) {
-          submitButton.click();
-          break;
-        }
-      }
+      element.dispatchEvent(inputEvent);
     }
-  }
-}
-
-// ChatGPT用の入力処理
-async function inputToChatGPT(text, promptType = 'cleanup', autoSubmit = false) {
-  const prompt = generatePrompt(text, promptType);
-
-  // 複数のセレクタを試す
-  const selectors = [
-    '#prompt-textarea',
-    'textarea[placeholder*="Message"]',
-    'div[contenteditable="true"]',
-    'textarea',
-    'div[role="textbox"]'
-  ];
-
-  let textarea = null;
-  for (const selector of selectors) {
-    // 10秒待機
-    textarea = await waitForElement(selector, 10000);
-    if (textarea) {
-      break;
+  } else if (method === 'value') {
+    // ChatGPT用: value/textContentを使用
+    if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
+      element.value = text;
+    } else if (element.contentEditable === 'true') {
+      element.textContent = text;
     }
-  }
-
-  if (textarea) {
-    // フォーカス
-    textarea.focus();
-
-    // テキストを挿入
-    if (textarea.tagName === 'TEXTAREA' || textarea.tagName === 'INPUT') {
-      textarea.value = prompt;
-    } else if (textarea.contentEditable === 'true') {
-      textarea.textContent = prompt;
-    }
-
-    // 各種イベントを発火
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    textarea.dispatchEvent(new Event('change', { bubbles: true }));
-    textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
-    textarea.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-
-    // 自動送信が有効な場合のみ送信処理を実行
-    if (autoSubmit) {
-      // 送信ボタンを探してクリック
-      await new Promise(resolve => setTimeout(resolve, 300)); // 少し待機
-
-      const submitSelectors = [
-        'button[data-testid="send-button"]',
-        'button[aria-label*="Send"]',
-        'button[type="submit"]',
-        'button:has(svg)',
-        '[data-testid="fruitjuice-send-button"]'
-      ];
-
-      let submitButton = null;
-      for (const selector of submitSelectors) {
-        submitButton = document.querySelector(selector);
-        if (submitButton && !submitButton.disabled) {
-          submitButton.click();
-          break;
-        }
-      }
-    }
-  }
-}
-
-// Gemini用の入力処理
-async function inputToGemini(text, promptType = 'cleanup', autoSubmit = false) {
-  const prompt = generatePrompt(text, promptType);
-
-  // 複数のセレクタを試す
-  const selectors = [
-    'rich-textarea .ql-editor[contenteditable="true"]',
-    '.ql-editor[contenteditable="true"]',
-    'div[contenteditable="true"]',
-    'textarea',
-    'div[role="textbox"]'
-  ];
-
-  let textarea = null;
-  for (const selector of selectors) {
-    // 10秒待機
-    textarea = await waitForElement(selector, 10000);
-    if (textarea) {
-      break;
-    }
-  }
-
-  if (textarea) {
-    // フォーカス
-    textarea.focus();
-
-    // テキストを挿入
-    if (textarea.tagName === 'TEXTAREA') {
-      textarea.value = prompt;
+  } else if (method === 'innerHTML') {
+    // Gemini用: innerHTMLを使用（pタグで囲む）
+    if (element.tagName === 'TEXTAREA') {
+      element.value = text;
     } else {
-      // contenteditable要素の場合
       const p = document.createElement('p');
-      p.textContent = prompt;
-      textarea.innerHTML = '';
-      textarea.appendChild(p);
+      p.textContent = text;
+      element.innerHTML = '';
+      element.appendChild(p);
     }
+  }
+}
 
-    // 各種イベントを発火
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    textarea.dispatchEvent(new Event('change', { bubbles: true }));
-    textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
-    textarea.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+// 入力イベントを発火
+function dispatchInputEvents(element) {
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+  element.dispatchEvent(new Event('change', { bubbles: true }));
+  element.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+  element.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+}
 
-    // 自動送信が有効な場合のみ送信処理を実行
-    if (autoSubmit) {
-      // 送信ボタンを探してクリック
-      await new Promise(resolve => setTimeout(resolve, 300)); // 少し待機
+// 送信処理（AIごとの方法）
+async function submitPrompt(element, config) {
+  if (config.submitMethod === 'keyboard') {
+    // Claude用: Cmd+Enter / Ctrl+Enter
+    const enterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      code: 'Enter',
+      keyCode: 13,
+      which: 13,
+      metaKey: true,  // Mac用
+      ctrlKey: true,  // Windows/Linux用
+      bubbles: true,
+      cancelable: true
+    });
 
-      const submitSelectors = [
-        'button[aria-label*="送信"]',
-        'button[aria-label*="Send"]',
-        'button.send-button',
-        'button[type="submit"]',
-        'button:has(svg)',
-        '[mattooltip*="送信"]'
-      ];
+    element.dispatchEvent(enterEvent);
 
-      let submitButton = null;
-      for (const selector of submitSelectors) {
-        submitButton = document.querySelector(selector);
-        if (submitButton && !submitButton.disabled) {
-          submitButton.click();
-          break;
-        }
+    // バックアップ: キーイベントで送信できなかった場合、ボタンを探す
+    await sleep(300);
+
+    const parentForm = element.closest('form') || element.closest('[class*="composer"]') || document;
+    for (const selector of config.submitSelectors) {
+      const submitButton = parentForm.querySelector(selector);
+      if (submitButton && !submitButton.disabled && submitButton.offsetParent !== null) {
+        submitButton.click();
+        break;
+      }
+    }
+  } else {
+    // ボタンクリック送信（ChatGPT, Gemini）
+    for (const selector of config.submitSelectors) {
+      const submitButton = document.querySelector(selector);
+      if (submitButton && !submitButton.disabled) {
+        submitButton.click();
+        break;
       }
     }
   }
+}
+
+// スリープユーティリティ
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // 要素が表示されるまで待機するヘルパー関数
@@ -332,4 +306,17 @@ function waitForElement(selector, timeout = 5000) {
       resolve(null);
     }, timeout);
   });
+}
+
+// 後方互換性のために旧関数名を残す（将来的に削除可能）
+async function inputToClaude(text, promptType = 'cleanup', autoSubmit = false) {
+  return await inputToAI('claude', text, { promptType, autoSubmit });
+}
+
+async function inputToChatGPT(text, promptType = 'cleanup', autoSubmit = false) {
+  return await inputToAI('chatgpt', text, { promptType, autoSubmit });
+}
+
+async function inputToGemini(text, promptType = 'cleanup', autoSubmit = false) {
+  return await inputToAI('gemini', text, { promptType, autoSubmit });
 }

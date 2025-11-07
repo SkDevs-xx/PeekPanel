@@ -71,4 +71,25 @@ export class EventEmitter {
       this.events = {};
     }
   }
+
+  /**
+   * EventEmitterインスタンスを破棄し、すべてのリスナーを削除
+   * メモリリーク対策: コンポーネント破棄時に必ず呼び出すこと
+   */
+  destroy() {
+    this.removeAllListeners();
+  }
+
+  /**
+   * 登録されているリスナー数を取得（デバッグ用）
+   * @param {string} event - イベント名（省略時は全イベント）
+   * @returns {number} リスナー数
+   */
+  listenerCount(event) {
+    if (event) {
+      return this.events[event] ? this.events[event].length : 0;
+    } else {
+      return Object.values(this.events).reduce((sum, listeners) => sum + listeners.length, 0);
+    }
+  }
 }

@@ -113,7 +113,7 @@ export class ContextMenu {
     header.className = 'context-menu-item';
     header.style.fontWeight = 'bold';
     header.style.cursor = 'default';
-    header.innerHTML = '🎨 グループに追加';
+    header.textContent = '🎨 グループに追加';
     menu.appendChild(header);
 
     // セパレーター
@@ -124,7 +124,7 @@ export class ContextMenu {
     // 新しいグループを作成
     const createNewGroup = document.createElement('div');
     createNewGroup.className = 'context-menu-item';
-    createNewGroup.innerHTML = '➕ 新しいグループ';
+    createNewGroup.textContent = '➕ 新しいグループ';
     createNewGroup.onclick = () => {
       console.log('[ContextMenu] Create new group clicked for tabId:', tabId);
       this.closeMenu();
@@ -147,7 +147,14 @@ export class ContextMenu {
       groups.forEach(group => {
         const groupItem = document.createElement('div');
         groupItem.className = 'context-menu-item';
-        groupItem.innerHTML = `<span style="color: ${group.color}">●</span> ${group.name}`;
+
+        // XSS対策: DOM要素を構築
+        const colorDot = document.createElement('span');
+        colorDot.style.color = group.color;
+        colorDot.textContent = '●';
+        groupItem.appendChild(colorDot);
+        groupItem.appendChild(document.createTextNode(' ' + group.name));
+
         groupItem.onclick = () => {
           this.eventHandlers.onAddTabToGroup?.(tabId, group.id);
           this.closeMenu();
@@ -164,7 +171,7 @@ export class ContextMenu {
 
       const removeFromGroup = document.createElement('div');
       removeFromGroup.className = 'context-menu-item';
-      removeFromGroup.innerHTML = '🗑️ グループから削除';
+      removeFromGroup.textContent = '🗑️ グループから削除';
       removeFromGroup.onclick = () => {
         this.eventHandlers.onRemoveTabFromGroup?.(tabId);
         this.closeMenu();
@@ -345,7 +352,7 @@ export class ContextMenu {
         if (item.disabled) {
           menuItem.classList.add('disabled');
         }
-        menuItem.innerHTML = `${item.icon} ${item.label}`;
+        menuItem.textContent = `${item.icon} ${item.label}`;
         menuItem.onclick = () => {
           if (!item.disabled && item.action) {
             item.action();

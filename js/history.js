@@ -16,7 +16,10 @@ async function displayHistory() {
   const { closedTabsHistory } = await chrome.storage.local.get('closedTabsHistory');
 
   if (!closedTabsHistory || closedTabsHistory.length === 0) {
-    container.innerHTML = '<div class="empty-message">最近閉じたタブはありません</div>';
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'empty-message';
+    emptyMessage.textContent = '最近閉じたタブはありません';
+    container.replaceChildren(emptyMessage);
     return;
   }
 
@@ -163,7 +166,7 @@ document.getElementById('clearButton').addEventListener('click', () => {
   const confirmBtn = document.getElementById('confirmClearButton');
   confirmBtn.onclick = async () => {
     await chrome.storage.local.set({ closedTabsHistory: [] });
-    document.getElementById('historyContainer').innerHTML = '';
+    document.getElementById('historyContainer').replaceChildren();
     displayHistory();
 
     // モーダルを閉じる
@@ -184,7 +187,7 @@ displayHistory();
 // ストレージの変更を監視して自動更新
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.closedTabsHistory) {
-    document.getElementById('historyContainer').innerHTML = '';
+    document.getElementById('historyContainer').replaceChildren();
     displayHistory();
   }
 });

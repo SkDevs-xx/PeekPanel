@@ -286,7 +286,15 @@ async function init() {
   tabManager.on('tabClosed', ({ tabId }) => {
     const iframe = document.getElementById(tabId);
     if (iframe && iframe.parentNode) {
-      iframe.parentNode.removeChild(iframe);
+      // メモリリーク対策: iframeのリソースを解放
+      iframe.src = 'about:blank';
+
+      // 少し待ってから削除（リソースの完全な解放を待つ）
+      setTimeout(() => {
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+      }, 0);
     }
   });
 
@@ -389,6 +397,13 @@ async function init() {
       }
     }
   });
+
+  // 初期化時に既存のpendingUrlをチェック（サイドパネル起動前に設定された場合に対応）
+  const { pendingUrl, pendingCleanupText } = await chrome.storage.local.get(['pendingUrl', 'pendingCleanupText']);
+  if (pendingUrl) {
+    tabManager.createTab(pendingUrl, true);
+    chrome.storage.local.remove(['pendingUrl', 'pendingCleanupText']);
+  }
 
   // グローバル変数（カスタムコンテキストメニュー用）
   let selectedTextForSearch = '';
