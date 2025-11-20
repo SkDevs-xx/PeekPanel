@@ -1,130 +1,244 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PeekPanel 設定</title>
   <link rel="stylesheet" href="../styles/common.css">
+  <style>
+    /* 2カラムレイアウト用スタイル */
+    body {
+      padding: 0;
+      max-width: none;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .settings-sidebar {
+      width: 200px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .settings-sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .settings-sidebar-header h1 {
+      font-size: 18px;
+      margin: 0;
+    }
+
+    .settings-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .settings-nav-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 14px;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-nav-item:hover {
+      background: var(--hover-bg);
+      color: var(--text-primary);
+    }
+
+    .settings-nav-item.active {
+      color: var(--text-primary);
+      background: var(--bg-primary);
+      border-left-color: var(--accent-color);
+      font-weight: 500;
+    }
+
+    .settings-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 40px;
+    }
+
+    .settings-section {
+      margin-bottom: 0;
+    }
+
+    .settings-page {
+      display: none;
+    }
+
+    .settings-page.active {
+      display: block;
+    }
+
+    .settings-page-header {
+      margin-bottom: 24px;
+    }
+
+    .settings-page-header h2 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .settings-page-header p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .settings-footer {
+      padding: 16px 40px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-secondary);
+    }
+  </style>
 </head>
+
 <body>
-  <div class="header">
-    <h1>⚙️ PeekPanel 設定</h1>
-    <button id="closeButton" class="button button-normal">閉じる</button>
+  <!-- 左サイドバー -->
+  <div class="settings-sidebar">
+    <div class="settings-sidebar-header">
+      <h1>⚙️ 設定</h1>
+    </div>
+    <nav class="settings-nav">
+      <div class="settings-nav-item active" data-page="prompts">
+        📝 カスタムプロンプト
+      </div>
+      <div class="settings-nav-item" data-page="history">
+        🕐 閲覧履歴
+      </div>
+      <div class="settings-nav-item" data-page="system">
+        💻 システム
+      </div>
+    </nav>
   </div>
 
-  <div class="setting-section">
-    <label class="setting-label">カスタムプロンプト</label>
-    <div class="setting-description">
-      テキスト選択時に使用できる独自のプロンプトを登録できます。<br>
-      プロンプト内で <code>{text}</code> を使うと、選択したテキストが挿入されます。
-    </div>
+  <!-- 右コンテンツエリア -->
+  <div style="flex: 1; display: flex; flex-direction: column;">
+    <div class="settings-content">
+      <!-- カスタムプロンプトページ -->
+      <div class="settings-page active" id="page-prompts">
+        <div class="settings-page-header">
+          <h2>カスタムプロンプト</h2>
+          <p>テキスト選択時に使用できる独自のプロンプトを登録できます。プロンプト内で <code>{text}</code> を使うと、選択したテキストが挿入されます。</p>
+        </div>
 
-    <!-- プロンプト一覧 -->
-    <div id="customPromptsContainer" class="prompts-container">
-      <!-- プロンプトカードが動的に追加される -->
-    </div>
+        <div id="customPromptsContainer" class="prompts-container">
+          <!-- プロンプトカードが動的に追加される -->
+        </div>
 
-    <!-- 新規追加ボタン -->
-    <button class="button button-primary" id="addPromptButton" style="margin-top: 12px;">
-      ➕ 新しいプロンプトを追加
-    </button>
-  </div>
+        <button class="button button-primary" id="addPromptButton" style="margin-top: 12px;">
+          ➕ 新しいプロンプトを追加
+        </button>
+      </div>
 
-  <div class="setting-section">
-    <label class="setting-label">自動送信</label>
-    <div class="setting-description">
-      テキスト入力後に自動的に送信ボタンをクリックします
-    </div>
+      <!-- 閲覧履歴ページ -->
+      <div class="settings-page" id="page-history">
+        <div class="settings-page-header">
+          <h2>閲覧履歴</h2>
+          <p>最近閉じたタブの履歴を表示・管理できます</p>
+        </div>
 
-    <div class="radio-option">
-      <input type="checkbox" id="auto-submit" name="autoSubmit">
-      <label for="auto-submit">テキスト入力後に自動送信する</label>
-    </div>
-  </div>
+        <button class="button button-normal" id="historyButton">
+          🕐 最近閉じたタブを表示
+        </button>
+      </div>
 
-  <div class="setting-section">
-    <label class="setting-label">タブの自動スリープ</label>
-    <div class="setting-description">
-      一定時間使用していないタブを自動的にスリープさせ、メモリを節約します。スリープしたタブは再度アクティブにすると同じページが読み込まれます。
-    </div>
+      <!-- システムページ -->
+      <div class="settings-page" id="page-system">
+        <div class="settings-page-header">
+          <h2>システム設定</h2>
+          <p>外観やシステム動作の設定</p>
+        </div>
 
-    <div class="radio-option">
-      <input type="checkbox" id="auto-sleep-enabled" name="autoSleepEnabled">
-      <label for="auto-sleep-enabled">タブの自動スリープを有効にする</label>
-    </div>
+        <div class="setting-section">
+          <label class="setting-label">テーマ</label>
+          <div class="setting-description">
+            画面の外観を変更します
+          </div>
+          <div class="radio-group" style="margin-top: 12px;">
+            <div class="radio-option">
+              <input type="radio" id="theme-light" name="theme" value="light">
+              <label for="theme-light">☀️ ライト</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="theme-dark" name="theme" value="dark">
+              <label for="theme-dark">🌙 ダーク</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="theme-system" name="theme" value="system" checked>
+              <label for="theme-system">💻 システム設定に従う</label>
+            </div>
+          </div>
+        </div>
 
-    <div style="margin-top: 12px;">
-      <label for="auto-sleep-minutes" style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary);">
-        スリープまでの時間（分）
-      </label>
-      <input
-        type="number"
-        id="auto-sleep-minutes"
-        name="autoSleepMinutes"
-        min="1"
-        max="60"
-        value="5"
-        style="width: 100px; padding: 6px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);"
-      >
-    </div>
+        <div class="setting-section" style="margin-top: 20px;">
+          <label class="setting-label">自動送信</label>
+          <div class="setting-description">
+            テキスト入力後に自動的に送信ボタンをクリックします
+          </div>
+          <div class="radio-option" style="margin-top: 12px;">
+            <input type="checkbox" id="auto-submit" name="autoSubmit">
+            <label for="auto-submit">テキスト入力後に自動送信する</label>
+          </div>
+        </div>
 
-    <div style="margin-top: 12px;">
-      <label for="no-sleep-domains" style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary);">
-        スリープ禁止ドメイン（1行に1つ）
-      </label>
-      <textarea
-        id="no-sleep-domains"
-        name="noSleepDomains"
-        rows="5"
-        placeholder="youtube.com&#10;music.youtube.com&#10;twitch.tv"
-        style="width: 100%; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: monospace; font-size: 12px; resize: vertical;"
-      ></textarea>
-      <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">
-        デフォルト: youtube.com, youtu.be, music.youtube.com, twitch.tv
+        <div class="setting-section" style="margin-top: 20px;">
+          <label class="setting-label">タブの自動スリープ</label>
+          <div class="setting-description">
+            一定時間使用していないタブを自動的にスリープさせ、メモリを節約します
+          </div>
+          <div class="radio-option" style="margin-top: 12px;">
+            <input type="checkbox" id="auto-sleep-enabled" name="autoSleepEnabled">
+            <label for="auto-sleep-enabled">タブの自動スリープを有効にする</label>
+          </div>
+
+          <div style="margin-top: 12px;">
+            <label for="auto-sleep-minutes"
+              style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary);">
+              スリープまでの時間（分）
+            </label>
+            <input type="number" id="auto-sleep-minutes" name="autoSleepMinutes" min="1" max="60" value="5"
+              style="width: 100px; padding: 6px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+          </div>
+
+          <div style="margin-top: 12px;">
+            <label for="no-sleep-domains"
+              style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary);">
+              スリープ禁止ドメイン（1行に1つ）
+            </label>
+            <textarea id="no-sleep-domains" name="noSleepDomains" rows="5"
+              placeholder="youtube.com&#10;music.youtube.com&#10;twitch.tv"
+              style="width: 100%; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
+            <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">
+              デフォルト: youtube.com, youtu.be, music.youtube.com, twitch.tv
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-
-  <div class="setting-section">
-    <label class="setting-label">システム</label>
-    <div class="setting-description">
-      外観やシステム動作の設定
-    </div>
-
-    <div style="margin-top: 16px;">
-      <label style="display: block; margin-bottom: 8px; font-size: 13px; font-weight: 500; color: var(--text-primary);">
-        テーマ
-      </label>
-      <div class="radio-group">
-        <div class="radio-option">
-          <input type="radio" id="theme-light" name="theme" value="light">
-          <label for="theme-light">☀️ ライト</label>
-        </div>
-        <div class="radio-option">
-          <input type="radio" id="theme-dark" name="theme" value="dark">
-          <label for="theme-dark">🌙 ダーク</label>
-        </div>
-        <div class="radio-option">
-          <input type="radio" id="theme-system" name="theme" value="system" checked>
-          <label for="theme-system">💻 システム設定に従う</label>
-        </div>
-      </div>
+    <!-- フッター -->
+    <div class="settings-footer">
+      <button class="button button-normal" id="closeButton">閉じる</button>
+      <button class="button button-primary" id="saveButton">設定を保存</button>
     </div>
   </div>
 
-  <div class="setting-section">
-    <label class="setting-label">その他</label>
-    <div class="setting-description">
-      閲覧履歴やその他の機能にアクセスできます
-    </div>
-
-    <button class="button button-normal" id="historyButton" style="margin-top: 8px;">
-      🕐 最近閉じたタブを表示
-    </button>
-  </div>
-
-  <button class="button button-primary" id="saveButton">設定を保存</button>
   <div class="status-message" id="statusMessage"></div>
 
   <!-- プロンプト編集モーダル -->
@@ -138,8 +252,7 @@
       <div class="modal-body">
         <div class="form-group">
           <label for="promptName">プロンプト名</label>
-          <input type="text" id="promptName" placeholder="例: コードをレビュー"
-                 style="width: 100%; padding: 8px; background: var(--bg-secondary);
+          <input type="text" id="promptName" placeholder="例: コードをレビュー" style="width: 100%; padding: 8px; background: var(--bg-secondary);
                         border: 1px solid var(--border-color); border-radius: 4px;
                         color: var(--text-primary);">
         </div>
@@ -148,8 +261,7 @@
           <label for="promptText">プロンプト文</label>
           <textarea id="promptText" rows="8" placeholder="例: 次のコードをレビューして、改善点を提案してください:
 
-{text}"
-                    style="width: 100%; padding: 8px; background: var(--bg-secondary);
+{text}" style="width: 100%; padding: 8px; background: var(--bg-secondary);
                            border: 1px solid var(--border-color); border-radius: 4px;
                            color: var(--text-primary); font-family: monospace; resize: vertical;"></textarea>
           <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">
@@ -187,4 +299,5 @@
 
   <script src="../js/settings.js"></script>
 </body>
+
 </html>

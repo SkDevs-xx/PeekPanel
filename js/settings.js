@@ -149,39 +149,26 @@ document.getElementById('closeButton').addEventListener('click', () => {
 });
 
 // 履歴ボタンのイベントリスナー
-document.getElementById('historyButton').addEventListener('click', () => {
-  window.parent.postMessage({
-    type: 'openHistory'
-  }, '*');
+const container = document.getElementById('customPromptsContainer');
+if (!container) return;
+
+// 既存の表示をクリア
+container.innerHTML = '';
+
+// デフォルトプロンプトの有効/無効を設定
+const defaultPrompts = DEFAULT_PROMPTS.map(p => ({
+  ...p,
+  enabled: !disabledDefaultPrompts.includes(p.id)
+}));
+
+// デフォルトプロンプトとカスタムプロンプトを結合
+const allPrompts = [...defaultPrompts, ...customPrompts];
+
+// プロンプトカードを表示
+allPrompts.forEach(prompt => {
+  const card = createPromptCard(prompt);
+  container.appendChild(card);
 });
-
-// カスタムプロンプトを読み込み
-async function loadCustomPrompts() {
-  const { customPrompts, disabledDefaultPrompts } = await chrome.storage.sync.get({
-    customPrompts: [],
-    disabledDefaultPrompts: []
-  });
-
-  const container = document.getElementById('customPromptsContainer');
-  if (!container) return;
-
-  // 既存の表示をクリア
-  container.innerHTML = '';
-
-  // デフォルトプロンプトの有効/無効を設定
-  const defaultPrompts = DEFAULT_PROMPTS.map(p => ({
-    ...p,
-    enabled: !disabledDefaultPrompts.includes(p.id)
-  }));
-
-  // デフォルトプロンプトとカスタムプロンプトを結合
-  const allPrompts = [...defaultPrompts, ...customPrompts];
-
-  // プロンプトカードを表示
-  allPrompts.forEach(prompt => {
-    const card = createPromptCard(prompt);
-    container.appendChild(card);
-  });
 }
 
 // プロンプトカードを作成
