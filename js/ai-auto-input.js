@@ -65,6 +65,46 @@ const AI_CONFIGS = {
     submitMethod: 'button',
     waitAfterInput: 300,
     insertMethod: 'innerHTML' // innerHTMLを使用
+  },
+  grok: {
+    name: 'Grok',
+    urlPattern: 'grok.com',
+    selectors: [
+      'textarea',                           // 最優先: 最も確実
+      'textarea[aria-label*="Grok"]',      // aria-label
+      'div[contenteditable="true"]',
+      'input[type="text"]'
+    ],
+    timeout: 8000,  // 3秒→8秒に延長（ページ読み込みを考慮）
+    submitSelectors: [
+      'button[type="submit"]',
+      'button[aria-label*="Send"]',
+      'button:has(svg)',
+      'button.send-button'
+    ],
+    submitMethod: 'button',
+    waitAfterInput: 300,
+    insertMethod: 'value'
+  },
+  genspark: {
+    name: 'Genspark',
+    urlPattern: 'genspark.ai',
+    selectors: [
+      'textarea[name="query"]',             // 最優先: 実際のDOM構造に基づく
+      'textarea.search-input',              // クラス名
+      'textarea',                           // フォールバック
+      'input[type="text"]'
+    ],
+    timeout: 8000,  // 3秒→8秒に延長（ページ読み込みを考慮）
+    submitSelectors: [
+      'button[type="submit"]',
+      'button[aria-label*="Send"]',
+      'button:has(svg)',
+      'button.send-button'
+    ],
+    submitMethod: 'button',
+    waitAfterInput: 300,
+    insertMethod: 'value'
   }
 };
 
@@ -166,13 +206,8 @@ async function inputToAI(aiType, text, options = {}) {
   const prompt = generatePrompt(text, promptType);
 
   // 要素待機
-  let textarea = null;
-  for (const selector of config.selectors) {
-    textarea = await waitForElement(selector, config.timeout);
-    if (textarea) {
-      break;
-    }
-  }
+  // 複数のセレクターを同時に監視して最初に見つかった要素を取得
+  const textarea = await findFirstElement(config.selectors, config.timeout);
 
   if (!textarea) {
     console.warn(`[PeekPanel] ${config.name}の入力欄が見つかりませんでした`);
@@ -182,8 +217,9 @@ async function inputToAI(aiType, text, options = {}) {
   // フォーカス設定
   textarea.focus();
 
-  // エディタが完全に初期化されるまで待機（特にClaudeのProseMirrorエディタ）
-  await sleep(2000);
+  // エディタが完全に初期化されるまで待機（Claudeなど重いエディタ用）
+  const initWaitTime = aiType === 'claude' ? 2000 : 500;
+  await sleep(initWaitTime);
 
   // テキスト挿入（AI別の方法を使用）
   await insertText(textarea, prompt, config.insertMethod);
@@ -241,11 +277,37 @@ async function insertText(element, text, method) {
     });
     element.dispatchEvent(inputEvent);
   } else if (method === 'value') {
-    // ChatGPT用: value/textContentを使用
+    // ChatGPT/Grok/GenSpark用: value/textContentを使用
+    element.focus();
+
     if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
-      element.value = text;
+      // React/Vue対応: ネイティブsetterを使用
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        'value'
+      )?.set || Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+
+      if (nativeInputValueSetter) {
+        nativeInputValueSetter.call(element, text);
+      } else {
+        element.value = text;
+      }
+
+      // React/Vueが検知できるようにイベントを発火
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      element.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: text
+      }));
     } else if (element.contentEditable === 'true') {
       element.textContent = text;
+      dispatchInputEvents(element);
     }
   } else if (method === 'innerHTML') {
     // Gemini用: innerHTMLを使用（pタグで囲む）
@@ -317,14 +379,12 @@ function sleep(ms) {
 // パフォーマンス最適化: より限定的なスコープで監視
 function waitForElement(selector, timeout = 5000) {
   return new Promise((resolve) => {
-    // すでに存在する場合は即座に返す
     const element = document.querySelector(selector);
     if (element) {
       resolve(element);
       return;
     }
 
-    // MutationObserverで要素の出現を監視
     const observer = new MutationObserver(() => {
       const element = document.querySelector(selector);
       if (element) {
@@ -334,22 +394,48 @@ function waitForElement(selector, timeout = 5000) {
       }
     });
 
-    // より限定的なスコープで監視（パフォーマンス最適化）
-    // 一般的なメインコンテンツコンテナを優先的に使用
-    const targetNode =
-      document.querySelector('#main-content') ||
-      document.querySelector('main') ||
-      document.querySelector('[role="main"]') ||
-      document.body;
+    const targetNode = document.body;
+    observer.observe(targetNode, { childList: true, subtree: true });
 
-    observer.observe(targetNode, {
-      childList: true,
-      subtree: true
-    });
-
-    // タイムアウト設定
     const timeoutId = setTimeout(() => {
       observer.disconnect();
+      resolve(null);
+    }, timeout);
+  });
+}
+
+// 複数のセレクターから最初に見つかった要素を返す（高速版）
+async function findFirstElement(selectors, timeout = 5000) {
+  // まず全てのセレクターで即座にチェック
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    if (element) {
+      console.log(`[PeekPanel] Element found immediately: ${selector}`);
+      return element;
+    }
+  }
+
+  // 見つからない場合は、全セレクターを同時に監視
+  return new Promise((resolve) => {
+    const observer = new MutationObserver(() => {
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+          console.log(`[PeekPanel] Element found via observer: ${selector}`);
+          observer.disconnect();
+          clearTimeout(timeoutId);
+          resolve(element);
+          return;
+        }
+      }
+    });
+
+    const targetNode = document.body;
+    observer.observe(targetNode, { childList: true, subtree: true });
+
+    const timeoutId = setTimeout(() => {
+      observer.disconnect();
+      console.log(`[PeekPanel] No elements found (timeout)`);
       resolve(null);
     }, timeout);
   });
