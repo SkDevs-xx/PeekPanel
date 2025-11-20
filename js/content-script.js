@@ -33,6 +33,22 @@
     // 拡張機能のオリジンを取得（セキュリティ強化）
     const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1) || '*';
 
+    // 安全にpostMessageを送信するヘルパー関数
+    function safePostMessage(message, targetOrigin = EXTENSION_ORIGIN) {
+      try {
+        // window.parentが存在し、かつ自分自身でないことを確認
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage(message, targetOrigin);
+        }
+      } catch (error) {
+        // postMessageエラーを静かに無視（origin mismatchなど）
+        // デバッグ用に必要な場合のみログ出力
+        if (error.message && !error.message.includes('does not match')) {
+          console.debug('[PeekPanel] postMessage error:', error.message);
+        }
+      }
+    }
+
     // クリーンアップ処理（メモリリーク対策）
     function cleanup() {
       if (titleObserver) {
@@ -62,37 +78,37 @@
         e.preventDefault();
 
         // 親ウィンドウ（panel.js）にメッセージを送信（オリジン検証強化）
-        window.parent.postMessage({
+        safePostMessage({
           type: 'showCustomContextMenu',
           text: selectedText,
           x: e.clientX,
           y: e.clientY
-        }, EXTENSION_ORIGIN);
+        });
       }
     }, true);
 
     // クリックイベント（カスタムメニュー＆タブコンテキストメニューを閉じる）
     document.addEventListener('click', () => {
       // カスタムコンテキストメニューを閉じる
-      window.parent.postMessage({
+      safePostMessage({
         type: 'hideCustomContextMenu'
-      }, EXTENSION_ORIGIN);
+      });
 
       // タブコンテキストメニューも閉じる
-      window.parent.postMessage({
+      safePostMessage({
         type: 'closeContextMenu'
-      }, EXTENSION_ORIGIN);
+      });
     }, true);
 
     // ページタイトルを親ウィンドウに通知
     function sendTitle() {
       const title = document.title;
       if (title) {
-        window.parent.postMessage({
+        safePostMessage({
           type: 'updatePageTitle',
           title: title,
           url: window.location.href
-        }, EXTENSION_ORIGIN);
+        });
       }
     }
 

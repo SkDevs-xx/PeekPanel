@@ -536,6 +536,21 @@ async function init() {
     document.getElementById('customContextMenu').style.display = 'none';
   });
 
+  // AI選択プルダウンを初期化
+  function initAIDropdown() {
+    const dropdown = document.getElementById('ai-selector-dropdown');
+    if (!dropdown) return;
+
+    // DEFAULT_AISからoptionタグを生成
+    DEFAULT_AIS.forEach(ai => {
+      const option = document.createElement('option');
+      option.value = ai.id;
+      // 最初の文字を大文字にして表示名を生成
+      option.textContent = ai.id.charAt(0).toUpperCase() + ai.id.slice(1);
+      dropdown.appendChild(option);
+    });
+  }
+
   // AI選択を読み込み
   async function loadAISelection() {
     try {
@@ -545,10 +560,10 @@ async function init() {
         cleanupAI: 'claude'
       });
 
-      // ラジオボタンを選択
-      const aiRadio = document.querySelector(`input[name="cleanupAI-footer"][value="${cleanupAI}"]`);
-      if (aiRadio) {
-        aiRadio.checked = true;
+      // プルダウンの値を設定
+      const dropdown = document.getElementById('ai-selector-dropdown');
+      if (dropdown) {
+        dropdown.value = cleanupAI;
       }
     } catch (error) {
       if (!error.message?.includes('Extension context invalidated')) {
@@ -572,14 +587,16 @@ async function init() {
     }
   }
 
+  // AI選択プルダウンを初期化
+  initAIDropdown();
+
   // AI選択のイベントリスナー
-  document.querySelectorAll('input[name="cleanupAI-footer"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        saveAISelection(e.target.value);
-      }
+  const aiDropdown = document.getElementById('ai-selector-dropdown');
+  if (aiDropdown) {
+    aiDropdown.addEventListener('change', (e) => {
+      saveAISelection(e.target.value);
     });
-  });
+  }
 
   // AI選択を読み込み
   loadAISelection();

@@ -420,33 +420,36 @@
       white-space: nowrap;
     }
 
-    .ai-selector {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-    }
-
-    .ai-option {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
+    .footer-label {
       color: var(--text-secondary);
+      white-space: nowrap;
     }
 
-    .ai-option input[type="radio"] {
-      margin: 0;
-      cursor: pointer;
-    }
-
-    .ai-option label {
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    .ai-option input[type="radio"]:checked+label {
+    .ai-dropdown {
+      min-width: 120px;
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
       color: var(--text-primary);
-      font-weight: 500;
+      font-size: 12px;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .ai-dropdown:hover {
+      border-color: var(--text-secondary);
+    }
+
+    .ai-dropdown:focus {
+      border-color: var(--text-secondary);
+      background: var(--bg-secondary);
+    }
+
+    .ai-dropdown option {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
     }
 
     /* エラーオーバーレイ */
@@ -813,19 +816,7 @@
   <!-- フッター（AI選択） -->
   <div class="footer-controls">
     <span class="footer-label">AI選択:</span>
-    <div class="ai-selector">
-      <div class="ai-option">
-        <input type="radio" id="ai-claude-footer" name="cleanupAI-footer" value="claude">
-        <label for="ai-claude-footer">Claude</label>
-      </div>
-      <div class="ai-option">
-        <input type="radio" id="ai-chatgpt-footer" name="cleanupAI-footer" value="chatgpt">
-        <label for="ai-chatgpt-footer">ChatGPT</label>
-      </div>
-      <div class="ai-option">
-        <input type="radio" id="ai-gemini-footer" name="cleanupAI-footer" value="gemini">
-        <label for="ai-gemini-footer">Gemini</label>
-      </div>
+    <select id="ai-selector-dropdown" class="ai-dropdown"></select>
     </div>
   </div>
 
