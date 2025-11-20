@@ -1,12 +1,29 @@
 // サイドパネル内のiframeでデフォルトのコンテキストメニューを無効化
 // Googleで検索などのデフォルト機能によるクラッシュを防ぐ
 
-// 拡張機能内部ページでは実行しない（chrome-extension://）
-if (window.location.protocol === 'chrome-extension:') {
-  // 何もしない
-  console.log('[PeekPanel] Content script skipped for internal page');
-} else if (window.self !== window.top) {
-  // iframe内でのみ動作（メインパネルでは動作しない）
+(function () {
+  // 拡張機能内部ページでは実行しない
+  const isExtensionPage = window.location.protocol === 'chrome-extension:' ||
+    window.location.href.includes('chrome-extension://');
+
+  // iframe内でない場合も実行しない
+  const isInIframe = window.self !== window.top;
+
+  // デバッグログ
+  console.log('[PeekPanel Content Script]', {
+    protocol: window.location.protocol,
+    href: window.location.href,
+    isExtensionPage,
+    isInIframe,
+    willExecute: !isExtensionPage && isInIframe
+  });
+
+  // 拡張機能内部ページまたはiframe外では何もしない
+  if (isExtensionPage || !isInIframe) {
+    return;
+  }
+
+  // iframe内でのみ動作
   try {
     // グローバル変数として保存（クリーンアップ用）
     let titleObserver = null;
@@ -181,4 +198,5 @@ if (window.location.protocol === 'chrome-extension:') {
       console.error('[PeekPanel Content Script] Error:', error);
     }
   }
-}
+})(); // 即時実行関数の閉じ括弧
+
