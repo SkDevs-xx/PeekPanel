@@ -260,8 +260,13 @@ function addNewPrompt() {
       return;
     }
 
-    // 新しいプロンプトを作成
+    // 重複チェック
     const { customPrompts } = await chrome.storage.sync.get({ customPrompts: [] });
+    const isDuplicate = [...DEFAULT_PROMPTS, ...customPrompts].some(p => p.name === name);
+    if (isDuplicate) {
+      alert('このタイトルのプロンプトは既に存在します');
+      return;
+    }
     const newPrompt = {
       id: `custom-${Date.now()}`,
       name: name,
@@ -312,6 +317,13 @@ async function editPrompt(promptId) {
 
     if (!name || !promptText) {
       alert('プロンプト名とプロンプト文を入力してください');
+      return;
+    }
+
+    // 重複チェック（自分自身は除く）
+    const isDuplicate = [...DEFAULT_PROMPTS, ...customPrompts].some(p => p.name === name && p.id !== promptId);
+    if (isDuplicate) {
+      alert('このタイトルのプロンプトは既に存在します');
       return;
     }
 
