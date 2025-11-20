@@ -69,7 +69,7 @@ export class TabUI {
       this.updateSleepState(tabId, true);
     });
 
-    this.tabManager.on('tabWoken', ({ tabId }) => {
+    this.tabManager.on('tabWoke', ({ tabId }) => {
       this.updateSleepState(tabId, false);
     });
   }
