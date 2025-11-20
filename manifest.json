@@ -49,8 +49,7 @@
         "https://claude.ai/*",
         "https://chatgpt.com/*",
         "https://gemini.google.com/*",
-        "https://grok.com/*",
-        "https://www.genspark.ai/*"
+        "https://grok.com/*"
       ],
       "js": [
         "js/ai-auto-input.js"

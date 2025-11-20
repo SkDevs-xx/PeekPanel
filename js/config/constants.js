@@ -3,7 +3,6 @@ export const DEFAULT_AIS = [
   { id: 'gemini', url: 'https://gemini.google.com/app' },
   { id: 'claude', url: 'https://claude.ai/new' },
   { id: 'chatgpt', url: 'https://chatgpt.com' },
-  { id: 'genspark', url: 'https://www.genspark.ai/' },
   { id: 'grok', url: 'https://grok.com/' }
 ];
 

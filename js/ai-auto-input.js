@@ -47,11 +47,10 @@ const AI_CONFIGS = {
     name: 'Gemini',
     urlPattern: 'gemini.google.com',
     selectors: [
-      'rich-textarea .ql-editor[contenteditable="true"]',
-      '.ql-editor[contenteditable="true"]',
-      'div[contenteditable="true"]',
-      'textarea',
-      'div[role="textbox"]'
+      'rich-textarea .ql-editor[contenteditable="true"]',  // 最優先: 実際のDOM構造
+      '.ql-editor[contenteditable="true"]',                // フォールバック
+      'div[aria-label*="プロンプト"][contenteditable="true"]', // 日本語UI
+      'div[contenteditable="true"][role="textbox"]'        // 一般的なパターン
     ],
     timeout: 10000,
     submitSelectors: [
@@ -73,26 +72,6 @@ const AI_CONFIGS = {
       'textarea',                           // 最優先: 最も確実
       'textarea[aria-label*="Grok"]',      // aria-label
       'div[contenteditable="true"]',
-      'input[type="text"]'
-    ],
-    timeout: 8000,  // 3秒→8秒に延長（ページ読み込みを考慮）
-    submitSelectors: [
-      'button[type="submit"]',
-      'button[aria-label*="Send"]',
-      'button:has(svg)',
-      'button.send-button'
-    ],
-    submitMethod: 'button',
-    waitAfterInput: 300,
-    insertMethod: 'value'
-  },
-  genspark: {
-    name: 'Genspark',
-    urlPattern: 'genspark.ai',
-    selectors: [
-      'textarea[name="query"]',             // 最優先: 実際のDOM構造に基づく
-      'textarea.search-input',              // クラス名
-      'textarea',                           // フォールバック
       'input[type="text"]'
     ],
     timeout: 8000,  // 3秒→8秒に延長（ページ読み込みを考慮）

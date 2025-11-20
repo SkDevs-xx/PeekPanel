@@ -327,8 +327,34 @@ async function init() {
   await tabManager.init();
   await groupManager.init();
 
-  // 初期タブを作成（tabCreatedイベントで自動的にiframeも作成される）
-  if (tabManager.getAllTabs().length === 0) {
+
+  // 初回起動時のみデフォルトAIグループとタブを作成
+  const { defaultAIGroupCreated } = await chrome.storage.local.get('defaultAIGroupCreated');
+
+  if (!defaultAIGroupCreated && tabManager.getAllTabs().length === 0) {
+    // 1. デフォルトAIグループを作成
+    const groupId = groupManager.createTabGroup('Default AI', 'blue');
+
+    // 2. 4つのAIタブを作成し、グループに追加
+    const createdTabIds = [];
+    DEFAULT_AIS.forEach((ai, index) => {
+      const tabId = tabManager.createTab(ai.url, index === 0);
+      createdTabIds.push(tabId);
+
+      // タブをグループに追加
+      groupManager.addTabToGroup(tabId, groupId);
+    });
+
+    // 3. グループとタブを保存
+    // groupManager.save()はcreateTabGroup/addTabToGroup内で自動的に行われるため不要
+    await tabManager.save();
+
+    // 4. 初回作成フラグを保存
+    await chrome.storage.local.set({ defaultAIGroupCreated: true });
+
+    console.log('[PeekPanel] Default AI group created with tabs:', createdTabIds);
+  } else if (tabManager.getAllTabs().length === 0) {
+    // デフォルトAIグループが既に作成済みだが、タブがない場合（通常はありえない）
     DEFAULT_AIS.forEach((ai, index) => {
       tabManager.createTab(ai.url, index === 0);
     });

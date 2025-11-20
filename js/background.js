@@ -112,7 +112,6 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         'claude': 'https://claude.ai',
         'chatgpt': 'https://chatgpt.com',
         'gemini': 'https://gemini.google.com/app',
-        'genspark': 'https://www.genspark.ai/',
         'grok': 'https://grok.com/'
       };
 
