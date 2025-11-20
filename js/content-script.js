@@ -1,8 +1,12 @@
 // サイドパネル内のiframeでデフォルトのコンテキストメニューを無効化
 // Googleで検索などのデフォルト機能によるクラッシュを防ぐ
 
-// iframe内でのみ動作（メインパネルでは動作しない）
-if (window.self !== window.top) {
+// 拡張機能内部ページでは実行しない（chrome-extension://）
+if (window.location.protocol === 'chrome-extension:') {
+  // 何もしない
+  console.log('[PeekPanel] Content script skipped for internal page');
+} else if (window.self !== window.top) {
+  // iframe内でのみ動作（メインパネルでは動作しない）
   try {
     // グローバル変数として保存（クリーンアップ用）
     let titleObserver = null;
