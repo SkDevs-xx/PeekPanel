@@ -2,7 +2,10 @@
 export const DEFAULT_AIS = [
   { id: 'gemini', url: 'https://gemini.google.com/app' },
   { id: 'claude', url: 'https://claude.ai/new' },
-  { id: 'chatgpt', url: 'https://chatgpt.com' }
+  { id: 'chatgpt', url: 'https://chatgpt.com' },
+  { id: 'genspark', url: 'https://www.genspark.ai/' },
+  { id: 'grok', url: 'https://grok.com/' },
+  { id: 'manus', url: 'https://manus.im/app' }
 ];
 
 // グループの色定義（Chromeの標準カラーに合わせた10色）
