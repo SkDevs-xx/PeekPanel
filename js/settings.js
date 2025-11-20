@@ -32,11 +32,12 @@ const DEFAULT_PROMPTS = [
 
 // 設定を読み込み
 async function loadSettings() {
-  const { autoSubmit, autoSleepEnabled, autoSleepMinutes, noSleepDomains } = await chrome.storage.sync.get({
+  const { autoSubmit, autoSleepEnabled, autoSleepMinutes, noSleepDomains, theme } = await chrome.storage.sync.get({
     autoSubmit: false,
     autoSleepEnabled: true,
     autoSleepMinutes: 5,
-    noSleepDomains: ['youtube.com', 'youtu.be', 'music.youtube.com', 'twitch.tv']
+    noSleepDomains: ['youtube.com', 'youtu.be', 'music.youtube.com', 'twitch.tv'],
+    theme: 'system'
   });
 
   // 自動送信のチェックボックスを設定
@@ -62,6 +63,15 @@ async function loadSettings() {
   if (noSleepDomainsTextarea) {
     noSleepDomainsTextarea.value = noSleepDomains.join('\n');
   }
+
+  // テーマを設定
+  const themeRadio = document.querySelector(`input[name="theme"][value="${theme}"]`);
+  if (themeRadio) {
+    themeRadio.checked = true;
+  }
+
+  // テーマを適用
+  applyTheme(theme);
 }
 
 // トースト通知を表示
@@ -80,11 +90,23 @@ function showToast(message, type = 'success') {
   }, 2000);
 }
 
+// テーマを適用
+function applyTheme(theme) {
+  if (theme === 'system') {
+    // システム設定に従う場合は data-theme 属性を削除
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    // ライトまたはダークを明示的に設定
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+}
+
 // 設定を保存
 async function saveSettings() {
   const autoSubmit = document.getElementById('auto-submit')?.checked || false;
   const autoSleepEnabled = document.getElementById('auto-sleep-enabled')?.checked || false;
   const autoSleepMinutes = parseInt(document.getElementById('auto-sleep-minutes')?.value || '5', 10);
+  const theme = document.querySelector('input[name="theme"]:checked')?.value || 'system';
 
   // スリープ禁止ドメインを取得（改行で分割し、空行を除外）
   const noSleepDomainsText = document.getElementById('no-sleep-domains')?.value || '';
@@ -98,8 +120,12 @@ async function saveSettings() {
     autoSubmit: autoSubmit,
     autoSleepEnabled: autoSleepEnabled,
     autoSleepMinutes: autoSleepMinutes,
-    noSleepDomains: noSleepDomains
+    noSleepDomains: noSleepDomains,
+    theme: theme
   });
+
+  // テーマを適用
+  applyTheme(theme);
 
   // 保存成功メッセージを表示
   showToast('設定を保存しました');
@@ -107,6 +133,13 @@ async function saveSettings() {
 
 // 保存ボタンのイベントリスナー
 document.getElementById('saveButton').addEventListener('click', saveSettings);
+
+// テーマ変更イベントリスナー（即座に適用）
+document.querySelectorAll('input[name="theme"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    applyTheme(e.target.value);
+  });
+});
 
 // 閉じるボタンのイベントリスナー
 document.getElementById('closeButton').addEventListener('click', () => {
