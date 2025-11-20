@@ -342,6 +342,16 @@ function deletePrompt(promptId) {
 
 // プロンプトの有効/無効を切り替え
 async function togglePrompt(promptId, enabled) {
+  // UIを即座に更新（即時反映）
+  const card = document.querySelector(`.prompt-card[data-prompt-id="${promptId}"]`);
+  if (card) {
+    if (enabled) {
+      card.classList.remove('disabled');
+    } else {
+      card.classList.add('disabled');
+    }
+  }
+
   const { customPrompts, disabledDefaultPrompts } = await chrome.storage.sync.get({
     customPrompts: [],
     disabledDefaultPrompts: []

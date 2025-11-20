@@ -50,10 +50,16 @@ if (window.self !== window.top) {
       }
     }, true);
 
-    // クリックで選択を解除（オプション）
+    // クリックイベント（カスタムメニュー＆タブコンテキストメニューを閉じる）
     document.addEventListener('click', () => {
+      // カスタムコンテキストメニューを閉じる
       window.parent.postMessage({
         type: 'hideCustomContextMenu'
+      }, EXTENSION_ORIGIN);
+
+      // タブコンテキストメニューも閉じる
+      window.parent.postMessage({
+        type: 'closeContextMenu'
       }, EXTENSION_ORIGIN);
     }, true);
 
