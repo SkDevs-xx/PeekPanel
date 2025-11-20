@@ -149,26 +149,42 @@ document.getElementById('closeButton').addEventListener('click', () => {
 });
 
 // 履歴ボタンのイベントリスナー
-const container = document.getElementById('customPromptsContainer');
-if (!container) return;
+const historyBtn = document.getElementById('historyButton');
+if (historyBtn) {
+  historyBtn.addEventListener('click', () => {
+    window.parent.postMessage({
+      type: 'openHistory'
+    }, '*');
+  });
+}
 
-// 既存の表示をクリア
-container.innerHTML = '';
+// カスタムプロンプトを読み込み
+async function loadCustomPrompts() {
+  const { customPrompts, disabledDefaultPrompts } = await chrome.storage.sync.get({
+    customPrompts: [],
+    disabledDefaultPrompts: []
+  });
 
-// デフォルトプロンプトの有効/無効を設定
-const defaultPrompts = DEFAULT_PROMPTS.map(p => ({
-  ...p,
-  enabled: !disabledDefaultPrompts.includes(p.id)
-}));
+  const container = document.getElementById('customPromptsContainer');
+  if (!container) return;
 
-// デフォルトプロンプトとカスタムプロンプトを結合
-const allPrompts = [...defaultPrompts, ...customPrompts];
+  // 既存の表示をクリア
+  container.innerHTML = '';
 
-// プロンプトカードを表示
-allPrompts.forEach(prompt => {
-  const card = createPromptCard(prompt);
-  container.appendChild(card);
-});
+  // デフォルトプロンプトの有効/無効を設定
+  const defaultPrompts = DEFAULT_PROMPTS.map(p => ({
+    ...p,
+    enabled: !disabledDefaultPrompts.includes(p.id)
+  }));
+
+  // デフォルトプロンプトとカスタムプロンプトを結合
+  const allPrompts = [...defaultPrompts, ...customPrompts];
+
+  // プロンプトカードを表示
+  allPrompts.forEach(prompt => {
+    const card = createPromptCard(prompt);
+    container.appendChild(card);
+  });
 }
 
 // プロンプトカードを作成
@@ -409,6 +425,21 @@ function closePromptModal() {
 function closeDeleteConfirmModal() {
   document.getElementById('deleteConfirmModal').style.display = 'none';
 }
+
+// ページ切り替え機能（2カラムレイアウト用）
+document.querySelectorAll('.settings-nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const pageName = item.dataset.page;
+
+    // ナビゲーションアイテムのアクティブ状態を更新
+    document.querySelectorAll('.settings-nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+
+    // ページの表示を切り替え
+    document.querySelectorAll('.settings-page').forEach(p => p.classList.remove('active'));
+    document.getElementById(`page-${pageName}`).classList.add('active');
+  });
+});
 
 // 初期化
 loadSettings();
