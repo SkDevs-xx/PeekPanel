@@ -22,6 +22,8 @@ export class IframeManager {
   createIframeForTab(tabId, url, isActive, isInternal) {
     const iframe = document.createElement('iframe');
     iframe.id = tabId;
+    // content-scriptで識別するためにname属性を設定
+    iframe.name = `peekpanel-view-${tabId}`;
     iframe.allow = 'camera; clipboard-write; fullscreen; microphone; geolocation';
 
     // タイムアウト検知（60秒）- 内部ページは除外

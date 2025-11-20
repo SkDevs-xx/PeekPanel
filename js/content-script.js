@@ -23,6 +23,12 @@
     return;
   }
 
+  // PeekPanelのiframeでない場合は実行しない（一般のWebサイト上のiframeでの実行を防止）
+  // iframeManager.jsで設定したname属性（peekpanel-view-...）をチェック
+  if (!window.name || !window.name.startsWith('peekpanel-view-')) {
+    return;
+  }
+
   // iframe内でのみ動作
   try {
     // グローバル変数として保存（クリーンアップ用）
