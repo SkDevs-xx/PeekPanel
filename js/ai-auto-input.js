@@ -19,7 +19,7 @@ const AI_CONFIGS = {
     ],
     submitMethod: 'keyboard', // Cmd+Enter送信
     waitAfterInput: 500,
-    insertMethod: 'execCommand' // execCommandを使用
+    insertMethod: 'prosemirror' // ProseMirror用メソッドを使用
   },
   chatgpt: {
     name: 'ChatGPT',
@@ -75,11 +75,12 @@ const AI_CONFIGS = {
       return;
     }
 
-    // ストレージから清書テキスト、プロンプトタイプ、自動送信フラグを取得
-    const { pendingCleanupText, pendingPromptType, pendingAutoSubmit } = await chrome.storage.local.get([
+    // ストレージから清書テキスト、プロンプトタイプ、自動送信フラグ、AIタイプを取得
+    const { pendingCleanupText, pendingPromptType, pendingAutoSubmit, pendingAIType } = await chrome.storage.local.get([
       'pendingCleanupText',
       'pendingPromptType',
-      'pendingAutoSubmit'
+      'pendingAutoSubmit',
+      'pendingAIType'
     ]);
 
     if (!pendingCleanupText) {
@@ -97,16 +98,34 @@ const AI_CONFIGS = {
       }
     }
 
+    console.log('[PeekPanel] Auto-input check:', {
+      currentUrl,
+      aiType,
+      pendingAIType,
+      pendingCleanupText: pendingCleanupText ? 'exists' : 'missing'
+    });
+
     if (aiType) {
-      await inputToAI(aiType, pendingCleanupText, {
+      // AIタイプが指定されている場合、一致しなければスキップ
+      // ただし、Claudeのリダイレクト(/new -> /chat)などは同じ 'claude' タイプになるので問題ない
+      if (pendingAIType && pendingAIType !== aiType) {
+        console.log(`[PeekPanel] AI type mismatch: pending=${pendingAIType}, current=${aiType}`);
+        return;
+      }
+
+      console.log('[PeekPanel] Starting auto-input for:', aiType);
+      const success = await inputToAI(aiType, pendingCleanupText, {
         promptType: pendingPromptType || 'cleanup',
         autoSubmit: pendingAutoSubmit || false
       });
-    }
 
-    // 使用後は削除
-    if (chrome.runtime?.id) {
-      await chrome.storage.local.remove(['pendingCleanupText', 'pendingPromptType', 'pendingAutoSubmit']);
+      // 成功した場合のみストレージから削除
+      if (success && chrome.runtime?.id) {
+        console.log('[PeekPanel] Auto-input successful, clearing storage');
+        await chrome.storage.local.remove(['pendingCleanupText', 'pendingPromptType', 'pendingAutoSubmit', 'pendingAIType']);
+      } else {
+        console.log('[PeekPanel] Auto-input failed or pending, keeping storage');
+      }
     }
   } catch (error) {
     // 拡張機能コンテキストが無効化されている場合は静かに終了
@@ -135,11 +154,12 @@ function generatePrompt(text, promptType) {
 }
 
 // 統合されたAI入力関数 (Strategy パターン)
+// 成功時はtrue、失敗時はfalseを返す
 async function inputToAI(aiType, text, options = {}) {
   const config = AI_CONFIGS[aiType];
   if (!config) {
     console.error(`[PeekPanel] Unsupported AI type: ${aiType}`);
-    return;
+    return false;
   }
 
   const { promptType = 'cleanup', autoSubmit = false } = options;
@@ -156,12 +176,14 @@ async function inputToAI(aiType, text, options = {}) {
 
   if (!textarea) {
     console.warn(`[PeekPanel] ${config.name}の入力欄が見つかりませんでした`);
-    return;
+    return false; // 失敗
   }
 
   // フォーカス設定
   textarea.focus();
-  await sleep(100);
+
+  // エディタが完全に初期化されるまで待機（特にClaudeのProseMirrorエディタ）
+  await sleep(2000);
 
   // テキスト挿入（AI別の方法を使用）
   await insertText(textarea, prompt, config.insertMethod);
@@ -174,34 +196,50 @@ async function inputToAI(aiType, text, options = {}) {
     await sleep(config.waitAfterInput);
     await submitPrompt(textarea, config);
   }
+
+  return true; // 成功
 }
 
 // テキスト挿入処理（AIごとの方法）
 async function insertText(element, text, method) {
   if (method === 'execCommand') {
-    // Claude用: execCommandを使用
+    // 旧Claude用: execCommandを使用（非推奨）
     element.focus();
-
-    // 既存のコンテンツをクリア
     document.execCommand('selectAll', false, null);
     document.execCommand('delete', false, null);
-
-    // テキストを挿入（改行も正しく処理される）
     document.execCommand('insertText', false, text);
+  } else if (method === 'prosemirror') {
+    // 新Claude用: ProseMirror対応
+    element.focus();
 
-    // バックアップ方法：execCommandが失敗した場合
-    if (!element.textContent || element.textContent.trim() === '') {
-      element.textContent = text;
+    // まず既存の内容をクリア
+    element.innerHTML = '<p><br></p>';
 
-      // InputEventを発火
-      const inputEvent = new InputEvent('input', {
-        bubbles: true,
-        cancelable: true,
-        inputType: 'insertText',
-        data: text
+    // execCommandでの挿入を試みる（これが最も自然）
+    const success = document.execCommand('insertText', false, text);
+
+    // 失敗した場合、または内容が空の場合は直接DOM操作
+    if (!success || element.textContent.trim() === '') {
+      // 改行を<br>に変換して挿入
+      // ProseMirrorは<p>タグで囲むことを期待することが多い
+      const lines = text.split('\n');
+      element.innerHTML = '';
+
+      lines.forEach((line, index) => {
+        const p = document.createElement('p');
+        p.textContent = line;
+        element.appendChild(p);
       });
-      element.dispatchEvent(inputEvent);
     }
+
+    // 入力イベントを念入りに発火
+    const inputEvent = new InputEvent('input', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: text
+    });
+    element.dispatchEvent(inputEvent);
   } else if (method === 'value') {
     // ChatGPT用: value/textContentを使用
     if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {

@@ -109,7 +109,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
       // AIサービスのURLを決定
       const aiUrls = {
-        'claude': 'https://claude.ai/new',
+        'claude': 'https://claude.ai',
         'chatgpt': 'https://chatgpt.com',
         'gemini': 'https://gemini.google.com/app'
       };
@@ -119,7 +119,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           pendingUrl: aiUrls[cleanupAI],
           pendingCleanupText: finalPrompt,
           pendingPromptType: 'custom',
-          pendingAutoSubmit: autoSubmit
+          pendingAutoSubmit: autoSubmit,
+          pendingAIType: cleanupAI
         });
       } catch (storageError) {
         console.error('[PeekPanel] Failed to save to storage:', storageError);

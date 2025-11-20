@@ -348,19 +348,7 @@ async function init() {
     }
   }
 
-  // 設定ボタン
-  document.getElementById('settingsButton').addEventListener('click', () => {
-    const settingsUrl = chrome.runtime.getURL('pages/settings.html');
 
-    // 既に開いている設定タブを探す
-    const existingTab = tabManager.getAllTabs().find(t => t.isInternal && t.url.includes('settings.html'));
-
-    if (existingTab) {
-      tabManager.switchTab(existingTab.id);
-    } else {
-      tabManager.createTab(settingsUrl, true, true);
-    }
-  });
 
   // メインブラウザで開くボタン
   document.getElementById('sendToMainBrowser').addEventListener('click', () => {
@@ -387,6 +375,23 @@ async function init() {
     });
   }
 
+  // 設定ボタン
+  const settingsButton = document.getElementById('settingsButton');
+  if (settingsButton) {
+    settingsButton.addEventListener('click', () => {
+      const settingsUrl = chrome.runtime.getURL('pages/settings.html');
+
+      // 既に開いている設定タブを探す
+      const existingTab = tabManager.getAllTabs().find(t => t.isInternal && t.url.includes('settings.html'));
+
+      if (existingTab) {
+        tabManager.switchTab(existingTab.id);
+      } else {
+        tabManager.createTab(settingsUrl, true, true);
+      }
+    });
+  }
+
   // chrome.storageの変更を監視
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.pendingUrl) {
@@ -399,10 +404,11 @@ async function init() {
   });
 
   // 初期化時に既存のpendingUrlをチェック（サイドパネル起動前に設定された場合に対応）
-  const { pendingUrl, pendingCleanupText } = await chrome.storage.local.get(['pendingUrl', 'pendingCleanupText']);
+  const { pendingUrl } = await chrome.storage.local.get(['pendingUrl']);
   if (pendingUrl) {
     tabManager.createTab(pendingUrl, true);
-    chrome.storage.local.remove(['pendingUrl', 'pendingCleanupText']);
+    // pendingUrlのみ削除し、pendingCleanupText等はai-auto-input.jsのために残す
+    chrome.storage.local.remove(['pendingUrl']);
   }
 
   // グローバル変数（カスタムコンテキストメニュー用）
