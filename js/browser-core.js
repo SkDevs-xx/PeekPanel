@@ -468,6 +468,8 @@ async function init() {
     } else if (event.data.type === 'closeContextMenu') {
       // タブコンテキストメニューを閉じる（iframe内クリック時）
       contextMenu.closeMenu();
+      // タブグループも閉じる
+      groupManager.closeAllGroups();
     } else if (event.data.type === 'updatePageTitle') {
       // ページタイトルとURLを更新（iframe内からの通知）
       if (event.data.url && event.data.title) {
