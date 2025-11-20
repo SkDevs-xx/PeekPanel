@@ -4,6 +4,33 @@
 // iframe内でのみ動作（メインパネルでは動作しない）
 if (window.self !== window.top) {
   try {
+    // グローバル変数として保存（クリーンアップ用）
+    let titleObserver = null;
+    let mediaObserver = null;
+    let titleCheckInterval = null;
+
+    // 拡張機能のオリジンを取得（セキュリティ強化）
+    const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1) || '*';
+
+    // クリーンアップ処理（メモリリーク対策）
+    function cleanup() {
+      if (titleObserver) {
+        titleObserver.disconnect();
+        titleObserver = null;
+      }
+      if (mediaObserver) {
+        mediaObserver.disconnect();
+        mediaObserver = null;
+      }
+      if (titleCheckInterval) {
+        clearInterval(titleCheckInterval);
+        titleCheckInterval = null;
+      }
+    }
+
+    // ページアンロード時にクリーンアップ
+    window.addEventListener('beforeunload', cleanup);
+
     // 右クリックイベントをインターセプト
     document.addEventListener('contextmenu', (e) => {
       // テキストが選択されているか確認
@@ -13,13 +40,13 @@ if (window.self !== window.top) {
         // テキスト選択時のみデフォルトのコンテキストメニューを無効化
         e.preventDefault();
 
-        // 親ウィンドウ（panel.js）にメッセージを送信
+        // 親ウィンドウ（panel.js）にメッセージを送信（オリジン検証強化）
         window.parent.postMessage({
           type: 'showCustomContextMenu',
           text: selectedText,
           x: e.clientX,
           y: e.clientY
-        }, '*');
+        }, EXTENSION_ORIGIN);
       }
     }, true);
 
@@ -27,7 +54,7 @@ if (window.self !== window.top) {
     document.addEventListener('click', () => {
       window.parent.postMessage({
         type: 'hideCustomContextMenu'
-      }, '*');
+      }, EXTENSION_ORIGIN);
     }, true);
 
     // ページタイトルを親ウィンドウに通知
@@ -38,7 +65,7 @@ if (window.self !== window.top) {
           type: 'updatePageTitle',
           title: title,
           url: window.location.href
-        }, '*');
+        }, EXTENSION_ORIGIN);
       }
     }
 
@@ -54,14 +81,16 @@ if (window.self !== window.top) {
     }
 
     // タイトルの変更を監視（DOMContentLoaded後に設定）
-    function setupTitleObserver() {
+    function setupTitleObserver(retryCount = 0) {
       const titleElement = document.querySelector('title');
       if (titleElement) {
-        const titleObserver = new MutationObserver(sendTitle);
+        titleObserver = new MutationObserver(sendTitle);
         titleObserver.observe(titleElement, { childList: true, characterData: true, subtree: true });
+      } else if (retryCount < 10) {
+        // title要素がまだない場合は少し待ってから再試行（最大10回）
+        setTimeout(() => setupTitleObserver(retryCount + 1), 100);
       } else {
-        // title要素がまだない場合は少し待ってから再試行
-        setTimeout(setupTitleObserver, 100);
+        console.warn('[PeekPanel] Failed to setup title observer after 10 retries');
       }
     }
 
@@ -72,13 +101,14 @@ if (window.self !== window.top) {
     }
 
     // 定期的にタイトルをチェック（SPAなど動的に変わる場合に備えて）
+    // パフォーマンス最適化: 1秒→5秒間隔に変更
     let lastTitle = '';
-    setInterval(() => {
+    titleCheckInterval = setInterval(() => {
       if (document.title && document.title !== lastTitle) {
         lastTitle = document.title;
         sendTitle();
       }
-    }, 1000);
+    }, 5000);
 
     // 親ウィンドウからのミュート/ミュート解除メッセージを受信
     window.addEventListener('message', (event) => {
@@ -97,7 +127,7 @@ if (window.self !== window.top) {
 
     // 新しく追加されるaudio/video要素も監視してミュート状態を適用
     let currentMuteState = false;
-    const mediaObserver = new MutationObserver((mutations) => {
+    mediaObserver = new MutationObserver((mutations) => {
       if (currentMuteState) {
         document.querySelectorAll('audio, video').forEach(media => {
           media.muted = true;
@@ -105,15 +135,18 @@ if (window.self !== window.top) {
       }
     });
 
-    // body要素が存在する場合に監視を開始
-    function startMediaObserver() {
+    // body要素が存在する場合に監視を開始（レースコンディション対策）
+    function startMediaObserver(retryCount = 0) {
       if (document.body) {
         mediaObserver.observe(document.body, {
           childList: true,
           subtree: true
         });
+      } else if (retryCount < 10) {
+        // 最大10回までリトライ
+        setTimeout(() => startMediaObserver(retryCount + 1), 100);
       } else {
-        setTimeout(startMediaObserver, 100);
+        console.warn('[PeekPanel] Failed to initialize media observer after 10 retries');
       }
     }
 

@@ -276,6 +276,7 @@ function sleep(ms) {
 }
 
 // 要素が表示されるまで待機するヘルパー関数
+// パフォーマンス最適化: より限定的なスコープで監視
 function waitForElement(selector, timeout = 5000) {
   return new Promise((resolve) => {
     // すでに存在する場合は即座に返す
@@ -295,7 +296,15 @@ function waitForElement(selector, timeout = 5000) {
       }
     });
 
-    observer.observe(document.body, {
+    // より限定的なスコープで監視（パフォーマンス最適化）
+    // 一般的なメインコンテンツコンテナを優先的に使用
+    const targetNode =
+      document.querySelector('#main-content') ||
+      document.querySelector('main') ||
+      document.querySelector('[role="main"]') ||
+      document.body;
+
+    observer.observe(targetNode, {
       childList: true,
       subtree: true
     });

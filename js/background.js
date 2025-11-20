@@ -86,36 +86,51 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     // サブパネルを開く
     await chrome.sidePanel.open({ windowId: tab.windowId });
 
-    // プロンプトデータを取得
-    const { customPrompts, disabledDefaultPrompts, cleanupAI, autoSubmit } = await chrome.storage.sync.get({
-      customPrompts: [],
-      disabledDefaultPrompts: [],
-      cleanupAI: 'claude',
-      autoSubmit: false
-    });
+    try {
+      // プロンプトデータを取得
+      const { customPrompts, disabledDefaultPrompts, cleanupAI, autoSubmit } = await chrome.storage.sync.get({
+        customPrompts: [],
+        disabledDefaultPrompts: [],
+        cleanupAI: 'claude',
+        autoSubmit: false
+      });
 
-    const defaultPrompts = DEFAULT_PROMPTS.filter(p => !disabledDefaultPrompts.includes(p.id));
-    const allPrompts = [...defaultPrompts, ...customPrompts];
-    const prompt = allPrompts.find(p => p.id === promptId);
+      const defaultPrompts = DEFAULT_PROMPTS.filter(p => !disabledDefaultPrompts.includes(p.id));
+      const allPrompts = [...defaultPrompts, ...customPrompts];
+      const prompt = allPrompts.find(p => p.id === promptId);
 
-    if (!prompt) return;
+      if (!prompt) {
+        console.error('[PeekPanel] Prompt not found:', promptId);
+        return;
+      }
 
-    // プロンプトを生成（{text}を選択テキストに置換）
-    const finalPrompt = prompt.prompt.replace(/{text}/g, info.selectionText);
+      // プロンプトを生成（{text}を選択テキストに置換）
+      const finalPrompt = prompt.prompt.replace(/{text}/g, info.selectionText);
 
-    // AIサービスのURLを決定
-    const aiUrls = {
-      'claude': 'https://claude.ai/new',
-      'chatgpt': 'https://chatgpt.com',
-      'gemini': 'https://gemini.google.com/app'
-    };
+      // AIサービスのURLを決定
+      const aiUrls = {
+        'claude': 'https://claude.ai/new',
+        'chatgpt': 'https://chatgpt.com',
+        'gemini': 'https://gemini.google.com/app'
+      };
 
-    await chrome.storage.local.set({
-      pendingUrl: aiUrls[cleanupAI],
-      pendingCleanupText: finalPrompt,
-      pendingPromptType: 'custom',
-      pendingAutoSubmit: autoSubmit
-    });
+      try {
+        await chrome.storage.local.set({
+          pendingUrl: aiUrls[cleanupAI],
+          pendingCleanupText: finalPrompt,
+          pendingPromptType: 'custom',
+          pendingAutoSubmit: autoSubmit
+        });
+      } catch (storageError) {
+        console.error('[PeekPanel] Failed to save to storage:', storageError);
+        // ストレージクォータ超過の場合
+        if (storageError.message?.includes('QUOTA')) {
+          console.error('[PeekPanel] Storage quota exceeded. Please clear some data.');
+        }
+      }
+    } catch (error) {
+      console.error('[PeekPanel] Failed to process custom prompt:', error);
+    }
 
     return;
   }

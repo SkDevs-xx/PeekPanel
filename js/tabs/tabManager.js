@@ -14,6 +14,7 @@ export class TabManager extends EventEmitter {
     this.tabCounter = 0;
     this.storage = storage;
     this.history = history;
+    this.saveTimeout = null; // デバウンス用タイマー（パフォーマンス最適化）
   }
 
   /**
@@ -517,10 +518,30 @@ export class TabManager extends EventEmitter {
     return this.tabs.filter(t => t.isPinned);
   }
 
+
   /**
-   * タブ情報をストレージに保存
+   * タブ情報をストレージに保存（デバウンス版）
+   * パフォーマンス最適化: 300msのデバウンスで頻繁な保存を削減
    */
   save() {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    this.saveTimeout = setTimeout(() => {
+      this.storage.saveTabs(this.tabs, this.currentTabId);
+      this.saveTimeout = null;
+    }, 300);
+  }
+
+  /**
+   * タブ情報を即座にストレージに保存
+   * 重要な操作（タブ閉じるなど）で使用
+   */
+  saveImmediate() {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
     this.storage.saveTabs(this.tabs, this.currentTabId);
   }
 
