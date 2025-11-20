@@ -116,9 +116,8 @@
       } else if (retryCount < 10) {
         // title要素がまだない場合は少し待ってから再試行（最大10回）
         setTimeout(() => setupTitleObserver(retryCount + 1), 100);
-      } else {
-        console.warn('[PeekPanel] Failed to setup title observer after 10 retries');
       }
+      // title要素がないページ（Google One Tapなど）も存在するため、警告は不要
     }
 
     if (document.readyState === 'loading') {
@@ -172,9 +171,8 @@
       } else if (retryCount < 10) {
         // 最大10回までリトライ
         setTimeout(() => startMediaObserver(retryCount + 1), 100);
-      } else {
-        console.warn('[PeekPanel] Failed to initialize media observer after 10 retries');
       }
+      // body要素がないページも存在するため、警告は不要
     }
 
     if (document.readyState === 'loading') {
