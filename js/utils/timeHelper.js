@@ -1,4 +1,6 @@
-import { TIMINGS } from '../config/constants.js';
+/**
+ * 時間関連のユーティリティ関数
+ */
 
 /**
  * 時間の経過を表示する文字列を生成
