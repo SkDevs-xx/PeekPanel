@@ -25,8 +25,6 @@ export class IframeManager {
     // content-scriptで識別するためにname属性を設定
     iframe.name = `peekpanel-view-${tabId}`;
     iframe.allow = 'camera; clipboard-write; fullscreen; microphone; geolocation';
-    // HTMLのallowfullscreen属性も追加（一部のサイトで必要）
-    iframe.setAttribute('allowfullscreen', 'true');
 
     // タイムアウト検知（60秒）- 内部ページは除外
     let loadTimeout = setTimeout(() => {
@@ -46,17 +44,15 @@ export class IframeManager {
       }
     });
 
-    // iframeのロード完了時にファビコンとタイトルを更新
+    // iframeのロード完了時にタイトルを更新
     iframe.addEventListener('load', () => {
       clearTimeout(loadTimeout);
       try {
         const currentUrl = iframe.src;
         const tab = this.tabManager.getTab(tabId);
 
-        // スリープ中のタブはファビコン更新をスキップ
-        if (tab && !tab.isSleeping) {
-          this.tabUI.updateTabFavicon(tabId, currentUrl);
-        }
+        // ファビコン更新はcontent-scriptからのupdatePageTitleメッセージで行うため、ここでは行わない
+        // （iframe.srcは初期URLなので、ナビゲーション後の実際のURLとは異なる場合がある）
 
         // タイトル更新
         try {

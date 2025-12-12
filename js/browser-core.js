@@ -72,9 +72,11 @@ function navigateToUrl(url) {
 
 // リロード
 function reload() {
+  const tab = tabManager.getCurrentTab();
   const iframe = document.getElementById(tabManager.currentTabId);
-  if (iframe) {
-    iframe.src = iframe.src;
+  if (iframe && tab) {
+    // タブに保存された現在のURLを使用（iframe.srcは初期URLの可能性がある）
+    iframe.src = tab.url;
   }
 }
 
@@ -520,20 +522,28 @@ function setupMessageHandlers() {
         if (!sourceTab || sourceTab.isInternal) return;
 
         const newUrl = event.data.url;
+        const oldUrl = sourceTab.url;
+        const urlChanged = oldUrl !== newUrl;
 
         // 履歴ナビゲーション中は履歴更新をスキップ
         if (sourceTab.isNavigatingHistory) {
           sourceTab.title = event.data.title;
           tabManager.updateTabTitle(sourceTab.id, event.data.title);
+          // URLが変わった場合はファビコン更新
+          if (urlChanged) {
+            tabUI.updateTabFavicon(sourceTab.id, newUrl);
+          }
           return;
         }
 
         // 履歴が空の場合は初期URLを追加
         if (sourceTab.history.length === 0) {
           tabManager.updateTabUrl(sourceTab.id, newUrl);
+          // ファビコン更新
+          tabUI.updateTabFavicon(sourceTab.id, newUrl);
         }
         // URLが変わった場合は履歴に追加
-        else if (sourceTab.url !== newUrl) {
+        else if (urlChanged) {
           const lastUrl = sourceTab.history[sourceTab.historyIndex];
           const normalizedLast = normalizeUrl(lastUrl);
           const normalizedNew = normalizeUrl(newUrl);
@@ -541,6 +551,8 @@ function setupMessageHandlers() {
           if (normalizedLast !== normalizedNew) {
             tabManager.updateTabUrl(sourceTab.id, newUrl);
           }
+          // URLが変わったらファビコンも更新
+          tabUI.updateTabFavicon(sourceTab.id, newUrl);
         }
 
         // タイトルを更新

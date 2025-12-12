@@ -13,20 +13,33 @@ export function getTabTitle(url) {
 }
 
 /**
- * URLを正規化（プロトコルを自動補完）
- * @param {string} url - 入力URL
- * @returns {string} 正規化されたURL
+ * URLを正規化（プロトコルを自動補完）またはGoogle検索URLを生成
+ * @param {string} input - 入力（URLまたは検索クエリ）
+ * @returns {string} 正規化されたURLまたは検索URL
  */
-export function normalizeUrl(url) {
-  if (!url) return '';
+export function normalizeUrl(input) {
+  if (!input) return '';
+
+  const trimmed = input.trim();
 
   // 既にプロトコルがある場合はそのまま返す
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('about:') || url.startsWith('chrome:')) {
-    return url;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') ||
+    trimmed.startsWith('about:') || trimmed.startsWith('chrome:') ||
+    trimmed.startsWith('chrome-extension://')) {
+    return trimmed;
   }
 
-  // プロトコルがない場合はhttps://を追加
-  return 'https://' + url;
+  // URLパターンをチェック（ドメイン形式かどうか）
+  // 例: google.com, sub.example.co.jp, localhost, 192.168.1.1
+  const urlPattern = /^([\w-]+\.)+[\w-]+(:\d+)?(\/.*)?$|^localhost(:\d+)?(\/.*)?$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?(\/.*)?$/;
+
+  if (urlPattern.test(trimmed)) {
+    // URLっぽい形式ならhttps://を追加
+    return 'https://' + trimmed;
+  }
+
+  // それ以外はGoogle検索として扱う
+  return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
 }
 
 /**
