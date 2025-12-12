@@ -568,6 +568,21 @@ function setupMessageHandlers() {
         // タイトルを更新
         tabManager.updateTabTitle(sourceTab.id, event.data.title);
       }
+    } else if (event.data.type === 'openNewTab') {
+      // iframe内からの新規タブ作成リクエスト（target="_blank"リンクのクリック）
+      if (event.data.url) {
+        try {
+          const url = new URL(event.data.url);
+          // http/httpsスキームのみ許可（セキュリティ対策）
+          if (url.protocol === 'http:' || url.protocol === 'https:') {
+            tabManager.createTab(event.data.url, true);
+          } else {
+            console.warn('[PeekPanel] Invalid protocol for new tab:', url.protocol);
+          }
+        } catch (e) {
+          console.warn('[PeekPanel] Invalid URL for new tab:', event.data.url);
+        }
+      }
     }
   });
 }

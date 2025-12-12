@@ -106,6 +106,50 @@
       });
     }, true);
 
+    // リンクを新規タブで開くヘルパー関数
+    function openLinkInNewTab(e, requireBlankTarget = true) {
+      const link = e.target.closest('a');
+      if (!link) return false;
+
+      // requireBlankTarget=trueの場合はtarget="_blank"のリンクのみ対象
+      if (requireBlankTarget) {
+        const target = link.getAttribute('target');
+        if (target !== '_blank') return false;
+      }
+
+      const href = link.getAttribute('href');
+      if (!href || href.startsWith('javascript:') || href === '' || href === '#') return false;
+
+      let absoluteUrl;
+      try {
+        absoluteUrl = new URL(href, window.location.href).href;
+      } catch (e) {
+        return false;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      safePostMessage({
+        type: 'openNewTab',
+        url: absoluteUrl
+      });
+
+      return true;
+    }
+
+    // target="_blank" リンクのクリックをインターセプト（サブパネル内で新規タブとして開く）
+    document.addEventListener('click', (e) => {
+      openLinkInNewTab(e, true);
+    }, true);
+
+    // マウスホイールクリック（中クリック）をインターセプト（すべてのリンクを新規タブで開く）
+    document.addEventListener('auxclick', (e) => {
+      // 中クリック（button === 1）のみ処理
+      if (e.button !== 1) return;
+      openLinkInNewTab(e, false);
+    }, true);
+
     // ページタイトルを親ウィンドウに通知
     function sendTitle() {
       const title = document.title;
