@@ -43,7 +43,8 @@ async function setupHeaderRemoval() {
       },
       condition: {
         urlFilter: "*",
-        resourceTypes: ["sub_frame"]
+        resourceTypes: ["sub_frame"],
+        initiatorDomains: [chrome.runtime.id]
       }
     }]
   });
