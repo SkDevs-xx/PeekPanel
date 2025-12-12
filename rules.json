@@ -1,0 +1,318 @@
+[
+    {
+        "id": 1,
+        "priority": 100,
+        "action": {
+            "type": "modifyHeaders",
+            "responseHeaders": [
+                {
+                    "header": "x-frame-options",
+                    "operation": "remove"
+                },
+                {
+                    "header": "content-security-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "frame-options",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-opener-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-embedder-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-resource-policy",
+                    "operation": "remove"
+                }
+            ],
+            "requestHeaders": [
+                {
+                    "header": "User-Agent",
+                    "operation": "set",
+                    "value": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+                },
+                {
+                    "header": "Sec-Fetch-Dest",
+                    "operation": "set",
+                    "value": "document"
+                },
+                {
+                    "header": "Sec-Fetch-Mode",
+                    "operation": "set",
+                    "value": "navigate"
+                },
+                {
+                    "header": "Sec-Fetch-Site",
+                    "operation": "set",
+                    "value": "same-origin"
+                }
+            ]
+        },
+        "condition": {
+            "requestDomains": [
+                "x.com",
+                "mobile.x.com",
+                "api.x.com",
+                "ads.x.com",
+                "ads-api.x.com",
+                "analytics.x.com",
+                "caps.x.com",
+                "cards-dev.x.com",
+                "platform.x.com",
+                "pro.x.com",
+                "publish.x.com",
+                "ton.x.com",
+                "tpop-api.x.com",
+                "upload.x.com",
+                "wr.x.com",
+                "www.x.com"
+            ],
+            "resourceTypes": [
+                "main_frame",
+                "sub_frame",
+                "xmlhttprequest",
+                "script",
+                "stylesheet",
+                "image",
+                "media",
+                "websocket",
+                "other",
+                "font"
+            ]
+        }
+    },
+    {
+        "id": 2,
+        "priority": 100,
+        "action": {
+            "type": "modifyHeaders",
+            "responseHeaders": [
+                {
+                    "header": "x-frame-options",
+                    "operation": "remove"
+                },
+                {
+                    "header": "content-security-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "frame-options",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-opener-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-embedder-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-resource-policy",
+                    "operation": "remove"
+                }
+            ],
+            "requestHeaders": [
+                {
+                    "header": "User-Agent",
+                    "operation": "set",
+                    "value": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+                },
+                {
+                    "header": "Sec-Fetch-Dest",
+                    "operation": "set",
+                    "value": "document"
+                },
+                {
+                    "header": "Sec-Fetch-Mode",
+                    "operation": "set",
+                    "value": "navigate"
+                },
+                {
+                    "header": "Sec-Fetch-Site",
+                    "operation": "set",
+                    "value": "same-origin"
+                }
+            ]
+        },
+        "condition": {
+            "requestDomains": [
+                "twitter.com",
+                "mobile.twitter.com",
+                "api.twitter.com",
+                "cdn.api.twitter.com",
+                "urls.api.twitter.com",
+                "urls-real.api.twitter.com",
+                "failover-urls.api.twitter.com"
+            ],
+            "resourceTypes": [
+                "main_frame",
+                "sub_frame",
+                "xmlhttprequest",
+                "script",
+                "stylesheet",
+                "image",
+                "media",
+                "websocket",
+                "other",
+                "font"
+            ]
+        }
+    },
+    {
+        "id": 3,
+        "priority": 100,
+        "action": {
+            "type": "modifyHeaders",
+            "responseHeaders": [
+                {
+                    "header": "x-frame-options",
+                    "operation": "remove"
+                },
+                {
+                    "header": "content-security-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "frame-options",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-opener-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-embedder-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-resource-policy",
+                    "operation": "remove"
+                }
+            ],
+            "requestHeaders": [
+                {
+                    "header": "User-Agent",
+                    "operation": "set",
+                    "value": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+                },
+                {
+                    "header": "Sec-Fetch-Dest",
+                    "operation": "set",
+                    "value": "document"
+                },
+                {
+                    "header": "Sec-Fetch-Mode",
+                    "operation": "set",
+                    "value": "navigate"
+                },
+                {
+                    "header": "Sec-Fetch-Site",
+                    "operation": "set",
+                    "value": "same-origin"
+                }
+            ]
+        },
+        "condition": {
+            "requestDomains": [
+                "twimg.com",
+                "pbs.twimg.com",
+                "video.twimg.com",
+                "abs.twimg.com",
+                "ton.twimg.com"
+            ],
+            "resourceTypes": [
+                "main_frame",
+                "sub_frame",
+                "xmlhttprequest",
+                "script",
+                "stylesheet",
+                "image",
+                "media",
+                "websocket",
+                "other",
+                "font"
+            ]
+        }
+    },
+    {
+        "id": 4,
+        "priority": 100,
+        "action": {
+            "type": "modifyHeaders",
+            "responseHeaders": [
+                {
+                    "header": "x-frame-options",
+                    "operation": "remove"
+                },
+                {
+                    "header": "content-security-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "frame-options",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-opener-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-embedder-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-resource-policy",
+                    "operation": "remove"
+                }
+            ],
+            "requestHeaders": [
+                {
+                    "header": "User-Agent",
+                    "operation": "set",
+                    "value": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+                },
+                {
+                    "header": "Sec-Fetch-Dest",
+                    "operation": "set",
+                    "value": "document"
+                },
+                {
+                    "header": "Sec-Fetch-Mode",
+                    "operation": "set",
+                    "value": "navigate"
+                },
+                {
+                    "header": "Sec-Fetch-Site",
+                    "operation": "set",
+                    "value": "same-origin"
+                }
+            ]
+        },
+        "condition": {
+            "requestDomains": [
+                "t.co",
+                "twtrdns.net",
+                "twttr.com",
+                "ads-twitter.com"
+            ],
+            "resourceTypes": [
+                "main_frame",
+                "sub_frame",
+                "xmlhttprequest",
+                "script",
+                "stylesheet",
+                "image",
+                "media",
+                "websocket",
+                "other",
+                "font"
+            ]
+        }
+    }
+]

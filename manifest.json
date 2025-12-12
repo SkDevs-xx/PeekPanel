@@ -6,12 +6,23 @@
   "minimum_chrome_version": "114",
   "permissions": [
     "sidePanel",
+    "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess",
     "contextMenus",
     "storage",
     "scripting",
-    "tabs"
+    "tabs",
+    "cookies"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
   "host_permissions": [
     "<all_urls>"
   ],
