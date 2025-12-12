@@ -148,15 +148,179 @@ document.getElementById('closeButton').addEventListener('click', () => {
   }, '*');
 });
 
-// 履歴ボタンのイベントリスナー
-const historyBtn = document.getElementById('historyButton');
-if (historyBtn) {
-  historyBtn.addEventListener('click', () => {
-    window.parent.postMessage({
-      type: 'openHistory'
-    }, '*');
+// 履歴表示機能
+async function displayHistory() {
+  const container = document.getElementById('historyContainer');
+  if (!container) return;
+
+  const { closedTabsHistory } = await chrome.storage.local.get('closedTabsHistory');
+
+  if (!closedTabsHistory || closedTabsHistory.length === 0) {
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'empty-message';
+    emptyMessage.textContent = '最近閉じたタブはありません';
+    container.replaceChildren(emptyMessage);
+    return;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'history-list';
+
+  closedTabsHistory.forEach((item, index) => {
+    const li = document.createElement('li');
+    li.className = 'history-item';
+
+    const favicon = document.createElement('img');
+    favicon.className = 'history-favicon';
+
+    // faviconUrlかurlからファビコンを取得
+    const faviconSrc = item.faviconUrl || getRealFavicon(item.url);
+    favicon.src = faviconSrc;
+
+    // フォールバック処理
+    favicon.onerror = () => {
+      try {
+        // Google Favicon APIを試す
+        const domain = new URL(item.url).hostname;
+        favicon.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+
+        favicon.onerror = () => {
+          // 最終フォールバック
+          favicon.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+        };
+      } catch {
+        favicon.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+      }
+    };
+
+    const info = document.createElement('div');
+    info.className = 'history-info';
+
+    const title = document.createElement('div');
+    title.className = 'history-title';
+    title.textContent = item.title || item.url;
+
+    const url = document.createElement('div');
+    url.className = 'history-url';
+    url.textContent = item.url;
+
+    info.appendChild(title);
+    info.appendChild(url);
+
+    const time = document.createElement('div');
+    time.className = 'history-time';
+    time.textContent = getTimeAgo(item.timestamp);
+
+    li.appendChild(favicon);
+    li.appendChild(info);
+    li.appendChild(time);
+
+    li.addEventListener('click', () => {
+      restoreTab(index);
+    });
+
+    list.appendChild(li);
+  });
+
+  container.replaceChildren(list);
+}
+
+// ファビコン取得関数
+function getRealFavicon(url) {
+  if (!url) return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+
+  try {
+    const urlObj = new URL(url);
+    return `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
+  } catch {
+    return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+  }
+}
+
+// 時間の経過を表示
+function getTimeAgo(timestamp) {
+  const date = new Date(timestamp);
+  const now = Date.now();
+  const diff = now - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  // 日付の文字列を生成
+  const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+  // 経過時間の文字列を生成
+  let timeAgoStr;
+  if (days > 0) {
+    timeAgoStr = `${days}日前`;
+  } else if (hours > 0) {
+    timeAgoStr = `${hours}時間前`;
+  } else if (minutes > 0) {
+    timeAgoStr = `${minutes}分前`;
+  } else {
+    timeAgoStr = 'たった今';
+  }
+
+  return `${dateStr} (${timeAgoStr})`;
+}
+
+// タブを復元
+async function restoreTab(index) {
+  const { closedTabsHistory } = await chrome.storage.local.get('closedTabsHistory');
+  if (!closedTabsHistory || index >= closedTabsHistory.length) return;
+
+  const closedTab = closedTabsHistory[index];
+
+  // 親ウィンドウ（panel.js）にメッセージを送信
+  window.parent.postMessage({
+    type: 'restoreTab',
+    tabData: closedTab,
+    index: index
+  }, '*');
+}
+
+// 履歴クリア確認モーダルを閉じる
+function closeClearHistoryConfirmModal() {
+  document.getElementById('clearHistoryConfirmModal').style.display = 'none';
+}
+
+// 履歴クリアボタン
+const clearHistoryBtn = document.getElementById('clearHistoryButton');
+if (clearHistoryBtn) {
+  clearHistoryBtn.addEventListener('click', () => {
+    // 履歴クリア確認モーダルを表示
+    const modal = document.getElementById('clearHistoryConfirmModal');
+    modal.style.display = 'flex';
+
+    // クリアボタンのイベント
+    const confirmBtn = document.getElementById('confirmClearHistoryButton');
+    confirmBtn.onclick = async () => {
+      await chrome.storage.local.set({ closedTabsHistory: [] });
+      displayHistory();
+
+      // モーダルを閉じる
+      closeClearHistoryConfirmModal();
+
+      // 成功メッセージを表示
+      showToast('履歴をクリアしました');
+    };
   });
 }
+
+// 履歴クリア確認モーダル閉じるボタン
+document.getElementById('clearHistoryModalCloseButton')?.addEventListener('click', closeClearHistoryConfirmModal);
+document.getElementById('clearHistoryModalCancelButton')?.addEventListener('click', closeClearHistoryConfirmModal);
+
+// ストレージの変更を監視して自動更新
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.closedTabsHistory) {
+    // 履歴ページが表示されている場合のみ更新
+    if (document.getElementById('page-history').classList.contains('active')) {
+      displayHistory();
+    }
+  }
+});
 
 // カスタムプロンプトを読み込み
 async function loadCustomPrompts() {
@@ -450,6 +614,11 @@ document.querySelectorAll('.settings-nav-item').forEach(item => {
     // ページの表示を切り替え
     document.querySelectorAll('.settings-page').forEach(p => p.classList.remove('active'));
     document.getElementById(`page-${pageName}`).classList.add('active');
+
+    // 履歴ページの場合は履歴を読み込む
+    if (pageName === 'history') {
+      displayHistory();
+    }
   });
 });
 

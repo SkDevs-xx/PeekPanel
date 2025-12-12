@@ -95,6 +95,70 @@
       align-items: center;
       background: var(--bg-secondary);
     }
+
+    /* 履歴リスト用スタイル */
+    .history-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .history-item:hover {
+      background-color: var(--hover-bg);
+    }
+
+    .history-favicon {
+      width: 16px;
+      height: 16px;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+
+    .history-info {
+      flex: 1;
+      min-width: 0;
+      margin-right: 12px;
+    }
+
+    .history-title {
+      font-size: 14px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .history-url {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .empty-message {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
   </style>
 </head>
 
@@ -140,8 +204,12 @@
           <p>最近閉じたタブの履歴を表示・管理できます</p>
         </div>
 
-        <button class="button button-normal" id="historyButton">
-          🕐 最近閉じたタブを表示
+        <div id="historyContainer" class="history-container">
+          <!-- 履歴リストがここに表示されます -->
+        </div>
+
+        <button class="button button-danger" id="clearHistoryButton" style="margin-top: 20px;">
+          🗑️ 履歴をすべて削除
         </button>
       </div>
 
@@ -280,6 +348,26 @@
       <div class="modal-footer">
         <button class="button button-normal" id="deleteModalCancelButton">キャンセル</button>
         <button class="button button-danger" id="confirmDeleteButton">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 履歴クリア確認モーダル -->
+  <div id="clearHistoryConfirmModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>履歴を削除</h2>
+        <button class="modal-close" id="clearHistoryModalCloseButton">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="margin: 0; color: var(--text-primary);">すべての閲覧履歴を削除してもよろしいですか？</p>
+        <p style="margin: 8px 0 0 0; font-size: 12px; color: var(--text-secondary);">この操作は取り消せません。</p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="button button-normal" id="clearHistoryModalCancelButton">キャンセル</button>
+        <button class="button button-danger" id="confirmClearHistoryButton">削除</button>
       </div>
     </div>
   </div>
