@@ -65,7 +65,7 @@ export class ContextMenu {
       },
       { separator: true },
       {
-        label: 'メインブラウザで開く',
+        label: 'Switch to Main Browser',
         icon: '🔗',
         action: () => this.eventHandlers.onSendToMainBrowser?.(tabId),
         hide: tab.isInternal
