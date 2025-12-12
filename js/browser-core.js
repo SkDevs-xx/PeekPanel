@@ -496,6 +496,16 @@ function setupMessageHandlers() {
       // カスタムコンテキストメニューを表示
       window._selectedTextForSearch = event.data.text;
       const menu = document.getElementById('customContextMenu');
+
+      // メニューテキストを更新（選択テキストを20文字に制限）
+      const truncatedText = event.data.text.length > 20
+        ? event.data.text.substring(0, 20) + '...'
+        : event.data.text;
+      const searchGoogleText = document.getElementById('searchGoogleText');
+      if (searchGoogleText) {
+        searchGoogleText.textContent = `Googleで「${truncatedText}」を検索`;
+      }
+
       menu.style.display = 'block';
       menu.style.left = `${event.data.x}px`;
       menu.style.top = `${event.data.y}px`;

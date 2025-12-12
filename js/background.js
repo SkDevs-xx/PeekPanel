@@ -51,7 +51,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   // ページ右クリックメニュー（リンクタグ以外）
   chrome.contextMenus.create({
     id: 'openInSubPanel',
-    title: 'サブパネルで開く',
+    title: 'Open PeekPanel',
     contexts: ['page'] // リンクタグは除外、ページのみ
   });
 
@@ -178,7 +178,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       // ページ右クリックメニュー（リンクタグ以外）
       chrome.contextMenus.create({
         id: 'openInSubPanel',
-        title: 'サブパネルで開く',
+        title: 'Open PeekPanel',
         contexts: ['page'] // リンクタグは除外、ページのみ
       });
 
