@@ -1,34 +1,8 @@
-// デフォルトプロンプト定義
-const DEFAULT_PROMPTS = [
-  {
-    id: 'default-cleanup',
-    name: '清書する',
-    prompt: '次の文章を読みやすく清書してください:\n\n{text}',
-    enabled: true,
-    isDefault: true
-  },
-  {
-    id: 'default-summary',
-    name: '要約する',
-    prompt: '次の文章を簡潔に要約してください:\n\n{text}',
-    enabled: true,
-    isDefault: true
-  },
-  {
-    id: 'default-translate',
-    name: '英語に翻訳',
-    prompt: '次の文章を英語に翻訳してください:\n\n{text}',
-    enabled: true,
-    isDefault: true
-  },
-  {
-    id: 'default-professional',
-    name: 'ビジネス文書化',
-    prompt: '次の文章をビジネス文書として整形してください:\n\n{text}',
-    enabled: true,
-    isDefault: true
-  }
-];
+// 共通モジュールからインポート
+import { DEFAULT_PROMPTS } from './config/constants.js';
+import { applyFaviconWithFallback } from './utils/favicon.js';
+import { getTimeAgo } from './utils/timeHelper.js';
+import { showToast, hideModal } from './utils/uiHelper.js';
 
 // 設定を読み込み
 async function loadSettings() {
@@ -72,22 +46,6 @@ async function loadSettings() {
 
   // テーマを適用
   applyTheme(theme);
-}
-
-// トースト通知を表示
-function showToast(message, type = 'success') {
-  const statusMessage = document.getElementById('statusMessage');
-  statusMessage.textContent = type === 'success' ? `✓ ${message}` : message;
-  statusMessage.className = `status-message ${type} show`;
-
-  // 2秒後にフェードアウト開始
-  setTimeout(() => {
-    statusMessage.style.animation = 'slideUp 0.3s ease-out forwards';
-    setTimeout(() => {
-      statusMessage.classList.remove('show');
-      statusMessage.style.animation = '';
-    }, 300);
-  }, 2000);
 }
 
 // テーマを適用
@@ -173,25 +131,8 @@ async function displayHistory() {
     const favicon = document.createElement('img');
     favicon.className = 'history-favicon';
 
-    // faviconUrlかurlからファビコンを取得
-    const faviconSrc = item.faviconUrl || getRealFavicon(item.url);
-    favicon.src = faviconSrc;
-
-    // フォールバック処理
-    favicon.onerror = () => {
-      try {
-        // Google Favicon APIを試す
-        const domain = new URL(item.url).hostname;
-        favicon.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-
-        favicon.onerror = () => {
-          // 最終フォールバック
-          favicon.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
-        };
-      } catch {
-        favicon.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
-      }
-    };
+    // ファビコンを設定（共通関数を使用）
+    applyFaviconWithFallback(favicon, item.url, item.faviconUrl);
 
     const info = document.createElement('div');
     info.className = 'history-info';
@@ -225,46 +166,6 @@ async function displayHistory() {
   container.replaceChildren(list);
 }
 
-// ファビコン取得関数
-function getRealFavicon(url) {
-  if (!url) return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
-
-  try {
-    const urlObj = new URL(url);
-    return `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
-  } catch {
-    return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
-  }
-}
-
-// 時間の経過を表示
-function getTimeAgo(timestamp) {
-  const date = new Date(timestamp);
-  const now = Date.now();
-  const diff = now - timestamp;
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  // 日付の文字列を生成
-  const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-
-  // 経過時間の文字列を生成
-  let timeAgoStr;
-  if (days > 0) {
-    timeAgoStr = `${days}日前`;
-  } else if (hours > 0) {
-    timeAgoStr = `${hours}時間前`;
-  } else if (minutes > 0) {
-    timeAgoStr = `${minutes}分前`;
-  } else {
-    timeAgoStr = 'たった今';
-  }
-
-  return `${dateStr} (${timeAgoStr})`;
-}
-
 // タブを復元
 async function restoreTab(index) {
   const { closedTabsHistory } = await chrome.storage.local.get('closedTabsHistory');
@@ -282,7 +183,7 @@ async function restoreTab(index) {
 
 // 履歴クリア確認モーダルを閉じる
 function closeClearHistoryConfirmModal() {
-  document.getElementById('clearHistoryConfirmModal').style.display = 'none';
+  hideModal('clearHistoryConfirmModal');
 }
 
 // 履歴クリアボタン
@@ -594,12 +495,12 @@ async function togglePrompt(promptId, enabled) {
 
 // プロンプトモーダルを閉じる
 function closePromptModal() {
-  document.getElementById('promptModal').style.display = 'none';
+  hideModal('promptModal');
 }
 
 // 削除確認モーダルを閉じる
 function closeDeleteConfirmModal() {
-  document.getElementById('deleteConfirmModal').style.display = 'none';
+  hideModal('deleteConfirmModal');
 }
 
 // ページ切り替え機能（2カラムレイアウト用）

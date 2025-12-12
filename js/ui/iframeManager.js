@@ -25,6 +25,8 @@ export class IframeManager {
     // content-scriptで識別するためにname属性を設定
     iframe.name = `peekpanel-view-${tabId}`;
     iframe.allow = 'camera; clipboard-write; fullscreen; microphone; geolocation';
+    // HTMLのallowfullscreen属性も追加（一部のサイトで必要）
+    iframe.setAttribute('allowfullscreen', 'true');
 
     // タイムアウト検知（60秒）- 内部ページは除外
     let loadTimeout = setTimeout(() => {

@@ -419,16 +419,3 @@ async function findFirstElement(selectors, timeout = 5000) {
     }, timeout);
   });
 }
-
-// 後方互換性のために旧関数名を残す（将来的に削除可能）
-async function inputToClaude(text, promptType = 'cleanup', autoSubmit = false) {
-  return await inputToAI('claude', text, { promptType, autoSubmit });
-}
-
-async function inputToChatGPT(text, promptType = 'cleanup', autoSubmit = false) {
-  return await inputToAI('chatgpt', text, { promptType, autoSubmit });
-}
-
-async function inputToGemini(text, promptType = 'cleanup', autoSubmit = false) {
-  return await inputToAI('gemini', text, { promptType, autoSubmit });
-}

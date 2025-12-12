@@ -1,5 +1,5 @@
 // 新しいモジュールをインポート
-import { DEFAULT_AIS } from './config/constants.js';
+import { DEFAULT_AIS, TIMINGS } from './config/constants.js';
 import { StorageManager } from './storage/storageManager.js';
 import { TabManager } from './tabs/tabManager.js';
 import { TabGroupManager } from './tabs/tabGroups.js';
@@ -43,8 +43,7 @@ async function setupHeaderRemoval() {
       },
       condition: {
         urlFilter: "*",
-        resourceTypes: ["sub_frame"],
-        initiatorDomains: [chrome.runtime.id]
+        resourceTypes: ["sub_frame"]
       }
     }]
   });
@@ -78,6 +77,7 @@ function reload() {
     iframe.src = iframe.src;
   }
 }
+
 // メインブラウザに送信
 async function sendTabToMainBrowser(tabId) {
   const tab = tabManager.getTab(tabId);
@@ -98,8 +98,8 @@ async function sendTabToMainBrowser(tabId) {
   }
 }
 
-// 初期化関数
-async function init() {
+// マネージャーを初期化
+async function initManagers() {
   // ヘッダー削除設定
   await setupHeaderRemoval();
 
@@ -241,7 +241,10 @@ async function init() {
     onUngroupTabs: (groupId, tabCount) => modalManager.showUngroupDialog(groupId, tabCount),
     onDeleteGroup: (groupId, tabCount) => modalManager.showDeleteGroupDialog(groupId, tabCount)
   });
+}
 
+// TabManagerのイベントハンドラーを設定
+function setupTabManagerEvents() {
   // TabManagerのイベントを購読してiframeを作成
   tabManager.on('tabCreated', ({ tabId, tabData, isActive, isInternal }) => {
     iframeManager.createIframeForTab(tabId, tabData.url, isActive, isInternal);
@@ -323,12 +326,10 @@ async function init() {
       console.log('[PeekPanel] Tab woke with current URL:', tabId);
     }
   });
+}
 
-  // TabManagerとGroupManagerを初期化（イベントハンドラー登録後）
-  await tabManager.init();
-  await groupManager.init();
-
-
+// デフォルトAIタブを作成
+async function initDefaultTabs() {
   // 初回起動時のみデフォルトAIグループとタブを作成
   const { defaultAIGroupCreated } = await chrome.storage.local.get('defaultAIGroupCreated');
 
@@ -360,23 +361,10 @@ async function init() {
       tabManager.createTab(ai.url, index === 0);
     });
   }
+}
 
-  // 既存のタブをレンダリング（init()でイベントリスナー設定済み）
-  tabUI.init();
-
-  // タブバーを再構築（グループを含む）
-  tabUI.rebuildTabBar(groupUI);
-
-  // 現在のタブに切り替え
-  if (tabManager.currentTabId) {
-    const iframe = document.getElementById(tabManager.currentTabId);
-    if (iframe) {
-      iframe.style.display = 'block';
-    }
-  }
-
-
-
+// UIボタンのイベントリスナーを設定
+function setupUIEventListeners() {
   // メインブラウザで開くボタン
   document.getElementById('sendToMainBrowser').addEventListener('click', () => {
     const currentTabId = tabManager.currentTabId;
@@ -385,7 +373,7 @@ async function init() {
     }
   });
 
-  // 履歴ボタン（まだ実装されていない場合）
+  // 履歴ボタン
   const historyButton = document.getElementById('historyButton');
   if (historyButton) {
     historyButton.addEventListener('click', () => {
@@ -419,6 +407,37 @@ async function init() {
     });
   }
 
+  // 他の場所をクリックしたらメニューを閉じる（メニュー内のクリックは除外）
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('customContextMenu');
+    if (menu && !menu.contains(e.target)) {
+      menu.style.display = 'none';
+    }
+  });
+
+  // カスタムコンテキストメニューのGoogle検索
+  document.getElementById('searchGoogleItem').addEventListener('click', (e) => {
+    e.stopPropagation(); // イベントのバブリングを停止
+    const selectedTextForSearch = window._selectedTextForSearch || '';
+    if (selectedTextForSearch) {
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(selectedTextForSearch)}`;
+      tabManager.createTab(searchUrl, true);
+      document.getElementById('customContextMenu').style.display = 'none';
+      window._selectedTextForSearch = ''; // 使用後にクリア
+    }
+  });
+
+  // カスタムコンテキストメニューをホバー時の色変更
+  document.getElementById('searchGoogleItem').addEventListener('mouseenter', (e) => {
+    e.currentTarget.style.background = 'var(--hover-bg)';
+  });
+  document.getElementById('searchGoogleItem').addEventListener('mouseleave', (e) => {
+    e.currentTarget.style.background = 'transparent';
+  });
+}
+
+// メッセージハンドラーを設定
+function setupMessageHandlers() {
   // chrome.storageの変更を監視
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.pendingUrl) {
@@ -429,17 +448,6 @@ async function init() {
       }
     }
   });
-
-  // 初期化時に既存のpendingUrlをチェック（サイドパネル起動前に設定された場合に対応）
-  const { pendingUrl } = await chrome.storage.local.get(['pendingUrl']);
-  if (pendingUrl) {
-    tabManager.createTab(pendingUrl, true);
-    // pendingUrlのみ削除し、pendingCleanupText等はai-auto-input.jsのために残す
-    chrome.storage.local.remove(['pendingUrl']);
-  }
-
-  // グローバル変数（カスタムコンテキストメニュー用）
-  let selectedTextForSearch = '';
 
   // history.html、settings.html、およびiframe内からのメッセージを受信
   window.addEventListener('message', async (event) => {
@@ -484,7 +492,7 @@ async function init() {
       }
     } else if (event.data.type === 'showCustomContextMenu') {
       // カスタムコンテキストメニューを表示
-      selectedTextForSearch = event.data.text;
+      window._selectedTextForSearch = event.data.text;
       const menu = document.getElementById('customContextMenu');
       menu.style.display = 'block';
       menu.style.left = `${event.data.x}px`;
@@ -540,84 +548,63 @@ async function init() {
       }
     }
   });
+}
 
-  // カスタムコンテキストメニューのGoogle検索
-  document.getElementById('searchGoogleItem').addEventListener('click', () => {
-    if (selectedTextForSearch) {
-      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(selectedTextForSearch)}`;
-      tabManager.createTab(searchUrl, true);
-      document.getElementById('customContextMenu').style.display = 'none';
-    }
+// AI選択プルダウンを初期化
+function initAIDropdown() {
+  const dropdown = document.getElementById('ai-selector-dropdown');
+  if (!dropdown) return;
+
+  // DEFAULT_AISからoptionタグを生成
+  DEFAULT_AIS.forEach(ai => {
+    const option = document.createElement('option');
+    option.value = ai.id;
+    // 最初の文字を大文字にして表示名を生成
+    option.textContent = ai.id.charAt(0).toUpperCase() + ai.id.slice(1);
+    dropdown.appendChild(option);
   });
+}
 
-  // カスタムコンテキストメニューをホバー時の色変更
-  document.getElementById('searchGoogleItem').addEventListener('mouseenter', (e) => {
-    e.currentTarget.style.background = 'var(--hover-bg)';
-  });
-  document.getElementById('searchGoogleItem').addEventListener('mouseleave', (e) => {
-    e.currentTarget.style.background = 'transparent';
-  });
+// AI選択を読み込み
+async function loadAISelection() {
+  try {
+    if (!chrome.runtime?.id) return;
 
-  // 他の場所をクリックしたらメニューを閉じる
-  document.addEventListener('click', () => {
-    document.getElementById('customContextMenu').style.display = 'none';
-  });
-
-  // AI選択プルダウンを初期化
-  function initAIDropdown() {
-    const dropdown = document.getElementById('ai-selector-dropdown');
-    if (!dropdown) return;
-
-    // DEFAULT_AISからoptionタグを生成
-    DEFAULT_AIS.forEach(ai => {
-      const option = document.createElement('option');
-      option.value = ai.id;
-      // 最初の文字を大文字にして表示名を生成
-      option.textContent = ai.id.charAt(0).toUpperCase() + ai.id.slice(1);
-      dropdown.appendChild(option);
+    const { cleanupAI } = await chrome.storage.sync.get({
+      cleanupAI: 'claude'
     });
-  }
 
-  // AI選択を読み込み
-  async function loadAISelection() {
-    try {
-      if (!chrome.runtime?.id) return;
-
-      const { cleanupAI } = await chrome.storage.sync.get({
-        cleanupAI: 'claude'
-      });
-
-      // プルダウンの値を設定
-      const dropdown = document.getElementById('ai-selector-dropdown');
-      if (dropdown) {
-        dropdown.value = cleanupAI;
-      }
-    } catch (error) {
-      if (!error.message?.includes('Extension context invalidated')) {
-        console.error('[PeekPanel] Error loading AI selection:', error);
-      }
+    // プルダウンの値を設定
+    const dropdown = document.getElementById('ai-selector-dropdown');
+    if (dropdown) {
+      dropdown.value = cleanupAI;
+    }
+  } catch (error) {
+    if (!error.message?.includes('Extension context invalidated')) {
+      console.error('[PeekPanel] Error loading AI selection:', error);
     }
   }
+}
 
-  // AI選択を保存
-  async function saveAISelection(selectedAI) {
-    try {
-      if (!chrome.runtime?.id) return;
+// AI選択を保存
+async function saveAISelection(selectedAI) {
+  try {
+    if (!chrome.runtime?.id) return;
 
-      await chrome.storage.sync.set({
-        cleanupAI: selectedAI
-      });
-    } catch (error) {
-      if (!error.message?.includes('Extension context invalidated')) {
-        console.error('[PeekPanel] Error saving AI selection:', error);
-      }
+    await chrome.storage.sync.set({
+      cleanupAI: selectedAI
+    });
+  } catch (error) {
+    if (!error.message?.includes('Extension context invalidated')) {
+      console.error('[PeekPanel] Error saving AI selection:', error);
     }
   }
+}
 
-  // AI選択プルダウンを初期化
+// AI選択のイベントリスナーを設定
+function setupAIDropdownEvents() {
   initAIDropdown();
 
-  // AI選択のイベントリスナー
   const aiDropdown = document.getElementById('ai-selector-dropdown');
   if (aiDropdown) {
     aiDropdown.addEventListener('change', (e) => {
@@ -625,13 +612,59 @@ async function init() {
     });
   }
 
-  // AI選択を読み込み
   loadAISelection();
+}
+
+// 初期化関数
+async function init() {
+  // マネージャーを初期化
+  await initManagers();
+
+  // TabManagerのイベントハンドラーを設定
+  setupTabManagerEvents();
+
+  // TabManagerとGroupManagerを初期化（イベントハンドラー登録後）
+  await tabManager.init();
+  await groupManager.init();
+
+  // デフォルトAIタブを作成
+  await initDefaultTabs();
+
+  // 既存のタブをレンダリング（init()でイベントリスナー設定済み）
+  tabUI.init();
+
+  // タブバーを再構築（グループを含む）
+  tabUI.rebuildTabBar(groupUI);
+
+  // 現在のタブに切り替え
+  if (tabManager.currentTabId) {
+    const iframe = document.getElementById(tabManager.currentTabId);
+    if (iframe) {
+      iframe.style.display = 'block';
+    }
+  }
+
+  // UIイベントリスナーを設定
+  setupUIEventListeners();
+
+  // メッセージハンドラーを設定
+  setupMessageHandlers();
+
+  // 初期化時に既存のpendingUrlをチェック（サイドパネル起動前に設定された場合に対応）
+  const { pendingUrl } = await chrome.storage.local.get(['pendingUrl']);
+  if (pendingUrl) {
+    tabManager.createTab(pendingUrl, true);
+    // pendingUrlのみ削除し、pendingCleanupText等はai-auto-input.jsのために残す
+    chrome.storage.local.remove(['pendingUrl']);
+  }
+
+  // AI選択プルダウンを初期化
+  setupAIDropdownEvents();
 
   // 自動スリープのチェック（1分ごと）
   setInterval(() => {
     tabManager.checkAndSleepTabs();
-  }, 60000);
+  }, TIMINGS.AUTO_SLEEP_CHECK_INTERVAL);
 }
 
 // 初期化を実行

@@ -1,4 +1,4 @@
-// デフォルトプロンプト定義
+// デフォルトプロンプト定義（インライン - constants.jsのモジュールインポート問題を回避）
 const DEFAULT_PROMPTS = [
   {
     id: 'default-cleanup',
@@ -29,6 +29,14 @@ const DEFAULT_PROMPTS = [
     isDefault: true
   }
 ];
+
+// AI URLマップ
+const AI_URLS = {
+  'claude': 'https://claude.ai',
+  'chatgpt': 'https://chatgpt.com',
+  'gemini': 'https://gemini.google.com/app',
+  'grok': 'https://grok.com/'
+};
 
 // 拡張機能アイコンクリックでサイドパネルを開く
 chrome.action.onClicked.addListener(async (tab) => {
@@ -107,17 +115,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       // プロンプトを生成（{text}を選択テキストに置換）
       const finalPrompt = prompt.prompt.replace(/{text}/g, info.selectionText);
 
-      // AIサービスのURLを決定
-      const aiUrls = {
-        'claude': 'https://claude.ai',
-        'chatgpt': 'https://chatgpt.com',
-        'gemini': 'https://gemini.google.com/app',
-        'grok': 'https://grok.com/'
-      };
-
       try {
         await chrome.storage.local.set({
-          pendingUrl: aiUrls[cleanupAI],
+          pendingUrl: AI_URLS[cleanupAI],
           pendingCleanupText: finalPrompt,
           pendingPromptType: 'custom',
           pendingAutoSubmit: autoSubmit,

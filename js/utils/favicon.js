@@ -90,3 +90,31 @@ export async function isFaviconValid(faviconUrl) {
     setTimeout(() => resolve(false), 3000);
   });
 }
+
+/**
+ * img要素にファビコンを設定し、フォールバック処理を適用
+ * @param {HTMLImageElement} imgElement - 対象のimg要素
+ * @param {string} url - ページURL
+ * @param {string} [faviconUrl] - 既知のファビコンURL（オプション）
+ */
+export function applyFaviconWithFallback(imgElement, url, faviconUrl = null) {
+  // faviconUrlがある場合はそれを使用、なければurlからファビコンを取得
+  const initialFavicon = faviconUrl || getRealFavicon(url);
+  imgElement.src = initialFavicon;
+
+  // フォールバック処理
+  imgElement.onerror = () => {
+    try {
+      // Google Favicon APIを試す
+      const hostname = new URL(url).hostname;
+      imgElement.src = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+
+      imgElement.onerror = () => {
+        // 最終フォールバック
+        imgElement.src = DEFAULT_FAVICON;
+      };
+    } catch {
+      imgElement.src = DEFAULT_FAVICON;
+    }
+  };
+}

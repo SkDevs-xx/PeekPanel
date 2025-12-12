@@ -1,14 +1,7 @@
-// ファビコン取得関数（getRealFaviconのシンプル版）
-function getRealFavicon(url) {
-  if (!url) return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
-
-  try {
-    const urlObj = new URL(url);
-    return `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
-  } catch {
-    return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
-  }
-}
+// 共通モジュールからインポート
+import { applyFaviconWithFallback } from './utils/favicon.js';
+import { getTimeAgo } from './utils/timeHelper.js';
+import { showToast, hideModal } from './utils/uiHelper.js';
 
 // 履歴を表示
 async function displayHistory() {
@@ -33,25 +26,8 @@ async function displayHistory() {
     const favicon = document.createElement('img');
     favicon.className = 'history-favicon';
 
-    // faviconUrlかurlからファビコンを取得
-    const faviconSrc = item.faviconUrl || getRealFavicon(item.url);
-    favicon.src = faviconSrc;
-
-    // フォールバック処理
-    favicon.onerror = () => {
-      try {
-        // Google Favicon APIを試す
-        const domain = new URL(item.url).hostname;
-        favicon.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-
-        favicon.onerror = () => {
-          // 最終フォールバック
-          favicon.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
-        };
-      } catch {
-        favicon.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
-      }
-    };
+    // ファビコンを設定（共通関数を使用）
+    applyFaviconWithFallback(favicon, item.url, item.faviconUrl);
 
     const info = document.createElement('div');
     info.className = 'history-info';
@@ -85,34 +61,6 @@ async function displayHistory() {
   container.appendChild(list);
 }
 
-// 時間の経過を表示
-function getTimeAgo(timestamp) {
-  const date = new Date(timestamp);
-  const now = Date.now();
-  const diff = now - timestamp;
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  // 日付の文字列を生成
-  const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-
-  // 経過時間の文字列を生成
-  let timeAgoStr;
-  if (days > 0) {
-    timeAgoStr = `${days}日前`;
-  } else if (hours > 0) {
-    timeAgoStr = `${hours}時間前`;
-  } else if (minutes > 0) {
-    timeAgoStr = `${minutes}分前`;
-  } else {
-    timeAgoStr = 'たった今';
-  }
-
-  return `${dateStr} (${timeAgoStr})`;
-}
-
 // タブを復元
 async function restoreTab(index) {
   const { closedTabsHistory } = await chrome.storage.local.get('closedTabsHistory');
@@ -135,25 +83,9 @@ document.getElementById('closeButton').addEventListener('click', () => {
   }, '*');
 });
 
-// トースト通知を表示
-function showToast(message, type = 'success') {
-  const statusMessage = document.getElementById('statusMessage');
-  statusMessage.textContent = type === 'success' ? `✓ ${message}` : message;
-  statusMessage.className = `status-message ${type} show`;
-
-  // 2秒後にフェードアウト開始
-  setTimeout(() => {
-    statusMessage.style.animation = 'slideUp 0.3s ease-out forwards';
-    setTimeout(() => {
-      statusMessage.classList.remove('show');
-      statusMessage.style.animation = '';
-    }, 300);
-  }, 2000);
-}
-
 // 履歴クリア確認モーダルを閉じる
 function closeClearConfirmModal() {
-  document.getElementById('clearConfirmModal').style.display = 'none';
+  hideModal('clearConfirmModal');
 }
 
 // 履歴クリアボタン
