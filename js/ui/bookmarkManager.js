@@ -295,8 +295,12 @@ export class BookmarkManager {
     if (!folder) return;
 
     folder.isCollapsed = !folder.isCollapsed;
-    await this.saveBookmarks();
+
+    // UIを先に更新（レスポンス向上）
     this.renderBookmarkList();
+
+    // バックグラウンドで保存
+    this.saveBookmarks();
   }
 
   /**
@@ -391,6 +395,9 @@ export class BookmarkManager {
    * ブックマークリストをレンダリング
    */
   renderBookmarkList() {
+    // 現在のスクロール位置を保存
+    const scrollTop = this.bookmarkList.scrollTop;
+
     // リストをクリア
     this.bookmarkList.innerHTML = '';
 
@@ -422,6 +429,9 @@ export class BookmarkManager {
 
     // ルートドロップゾーンを追加
     this.setupRootDropZone();
+
+    // スクロール位置を復元
+    this.bookmarkList.scrollTop = scrollTop;
   }
 
   /**
@@ -583,7 +593,10 @@ export class BookmarkManager {
       header.appendChild(actions);
 
       // クリックで折りたたみトグル
-      header.onclick = () => this.toggleFolderCollapse(folder.id);
+      header.onclick = (e) => {
+        e.stopPropagation();
+        this.toggleFolderCollapse(folder.id);
+      };
     }
 
     container.appendChild(header);
