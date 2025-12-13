@@ -198,6 +198,35 @@ export class StorageManager {
   }
 
   /**
+   * ブックマークを保存
+   * @param {Object|Array} data - ブックマークデータ（オブジェクトまたは配列）
+   */
+  async saveBookmarks(data) {
+    // 新しい形式: { bookmarks: [], folders: [] }
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const limitedBookmarks = (data.bookmarks || []).slice(0, 100);
+      const limitedFolders = (data.folders || []).slice(0, 20);
+      await this.safeSet({
+        bookmarks: { bookmarks: limitedBookmarks, folders: limitedFolders }
+      }, true);
+    } else {
+      // 後方互換性: 配列として渡された場合
+      const limitedBookmarks = (data || []).slice(0, 100);
+      await this.safeSet({ bookmarks: limitedBookmarks }, true);
+    }
+  }
+
+  /**
+   * ブックマークを読み込み
+   * @returns {Promise<Object|Array>} - 新形式ならオブジェクト、旧形式なら配列
+   */
+  async loadBookmarks() {
+    const { bookmarks } = await this.safeGet('bookmarks', true);
+    // 新形式（オブジェクト）か旧形式（配列）かを判定して返す
+    return bookmarks || [];
+  }
+
+  /**
    * タブとグループをまとめて保存
    * @param {Array} tabs - タブ配列
    * @param {string} currentTabId - 現在アクティブなタブID

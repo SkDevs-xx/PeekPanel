@@ -52,6 +52,12 @@ export class ContextMenu {
         hide: tab.isInternal
       },
       {
+        label: 'ブックマークに追加',
+        icon: '⭐',
+        action: () => this.eventHandlers.onAddToBookmark?.(tabId),
+        hide: tab.isInternal
+      },
+      {
         label: 'グループに追加',
         icon: '🎨',
         action: () => {

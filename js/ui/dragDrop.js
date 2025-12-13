@@ -6,11 +6,21 @@ export class DragDropHandler {
   constructor(tabManager, groupUI, eventHandlers = {}) {
     this.tabManager = tabManager;
     this.groupUI = groupUI;
+    this.groupManager = null; // 後から設定
     this.eventHandlers = eventHandlers;
     this.draggedElement = null;
+    this.draggedTabId = null; // ドラッグ中のタブID
     this.tabsContainer = document.getElementById('tabs');
     this.isDraggingGroupedTab = false; // グループ内タブフラグ
     this.draggedTabGroupId = null;     // ドラッグ中のタブのグループID
+  }
+
+  /**
+   * GroupManagerを設定
+   * @param {Object} groupManager - GroupManagerインスタンス
+   */
+  setGroupManager(groupManager) {
+    this.groupManager = groupManager;
   }
 
   /**
@@ -45,8 +55,10 @@ export class DragDropHandler {
   setupTabDragDrop(tabElement) {
     tabElement.addEventListener('dragstart', (e) => {
       this.draggedElement = tabElement;
+      this.draggedTabId = tabElement.dataset.tabId;
       tabElement.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', tabElement.dataset.tabId);
 
       // グループ内タブかチェックし、情報を保存
       const parent = tabElement.parentElement;
@@ -56,6 +68,9 @@ export class DragDropHandler {
 
     tabElement.addEventListener('dragend', (e) => {
       tabElement.classList.remove('dragging');
+
+      // ドラッグオーバースタイルをクリア
+      this.clearDragOverStyles();
 
       // DOM上のタブの順序に合わせてtabs配列を並び替え
       this.updateTabsOrder();
@@ -71,6 +86,7 @@ export class DragDropHandler {
       }
 
       this.draggedElement = null;
+      this.draggedTabId = null;
       this.isDraggingGroupedTab = false; // フラグをリセット
       this.draggedTabGroupId = null;     // グループIDをリセット
 
@@ -169,6 +185,7 @@ export class DragDropHandler {
     containerElement.addEventListener('dragend', (e) => {
       containerElement.classList.remove('dragging');
       this.draggedElement = null;
+      this.clearDragOverStyles();
 
       // 保存
       if (this.eventHandlers.onSave) {
@@ -216,6 +233,7 @@ export class DragDropHandler {
    */
   setupGroupHeaderDragDrop(headerElement) {
     headerElement.addEventListener('dragstart', (e) => {
+      // グループヘッダーをドラッグする場合
       this.draggedElement = headerElement;
       headerElement.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
@@ -225,6 +243,7 @@ export class DragDropHandler {
     headerElement.addEventListener('dragend', (e) => {
       headerElement.classList.remove('dragging');
       this.draggedElement = null;
+      this.clearDragOverStyles();
 
       // 保存
       if (this.eventHandlers.onSave) {
@@ -241,16 +260,31 @@ export class DragDropHandler {
 
     headerElement.addEventListener('dragover', (e) => {
       e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
 
+      // グループ外のタブがドラッグされている場合、ドロップを許可
+      if (this.draggedTabId && !this.isDraggingGroupedTab) {
+        e.dataTransfer.dropEffect = 'move';
+        headerElement.classList.add('drag-over');
+        return;
+      }
+
+      // グループ内タブをドラッグ中の場合
+      if (this.isDraggingGroupedTab) {
+        // 異なるグループへのドロップを許可
+        const targetGroupId = headerElement.dataset.groupId;
+        if (targetGroupId !== this.draggedTabGroupId) {
+          e.dataTransfer.dropEffect = 'move';
+          headerElement.classList.add('drag-over');
+        }
+        return;
+      }
+
+      // グループヘッダー同士のドラッグ処理
       if (!this.draggedElement || this.draggedElement === headerElement) {
         return;
       }
 
-      // グループ内タブをドラッグ中の場合は何もしない
-      if (this.isDraggingGroupedTab) {
-        return;
-      }
+      e.dataTransfer.dropEffect = 'move';
 
       const afterElement = this.getDragAfterElement(this.tabsContainer, e.clientX);
 
@@ -261,8 +295,98 @@ export class DragDropHandler {
       }
     });
 
+    headerElement.addEventListener('dragleave', (e) => {
+      headerElement.classList.remove('drag-over');
+    });
+
     headerElement.addEventListener('drop', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      headerElement.classList.remove('drag-over');
+
+      const targetGroupId = headerElement.dataset.groupId;
+
+      // グループ外のタブをグループにドロップ
+      if (this.draggedTabId && !this.isDraggingGroupedTab && this.groupManager) {
+        this.groupManager.addTabToGroup(this.draggedTabId, targetGroupId);
+
+        // タブバーを再構築
+        if (this.eventHandlers.onRebuildTabBar) {
+          this.eventHandlers.onRebuildTabBar();
+        }
+
+        this.draggedElement = null;
+        this.draggedTabId = null;
+        return;
+      }
+
+      // グループ内タブを別のグループにドロップ
+      if (this.isDraggingGroupedTab && targetGroupId !== this.draggedTabGroupId && this.groupManager) {
+        // まず現在のグループから削除
+        this.groupManager.removeTabFromGroup(this.draggedTabId);
+        // 新しいグループに追加
+        this.groupManager.addTabToGroup(this.draggedTabId, targetGroupId);
+
+        // タブバーを再構築
+        if (this.eventHandlers.onRebuildTabBar) {
+          this.eventHandlers.onRebuildTabBar();
+        }
+
+        this.draggedElement = null;
+        this.draggedTabId = null;
+        this.isDraggingGroupedTab = false;
+        this.draggedTabGroupId = null;
+        return;
+      }
+    });
+  }
+
+  /**
+   * タブバー全体へのドロップを設定（グループからタブを外す用）
+   */
+  setupTabsContainerDropZone() {
+    this.tabsContainer.addEventListener('dragover', (e) => {
+      // グループ内タブをグループ外にドラッグしている場合
+      if (this.isDraggingGroupedTab && this.draggedTabId) {
+        // グループヘッダーやグループ内容の上でない場合のみ
+        const isOverGroup = e.target.closest('.group-container');
+        if (!isOverGroup) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        }
+      }
+    });
+
+    this.tabsContainer.addEventListener('drop', (e) => {
+      // グループ内タブをグループ外にドロップ
+      if (this.isDraggingGroupedTab && this.draggedTabId && this.groupManager) {
+        const isOverGroup = e.target.closest('.group-container');
+        if (!isOverGroup) {
+          e.preventDefault();
+
+          // グループから削除
+          this.groupManager.removeTabFromGroup(this.draggedTabId);
+
+          // タブバーを再構築
+          if (this.eventHandlers.onRebuildTabBar) {
+            this.eventHandlers.onRebuildTabBar();
+          }
+
+          this.draggedElement = null;
+          this.draggedTabId = null;
+          this.isDraggingGroupedTab = false;
+          this.draggedTabGroupId = null;
+        }
+      }
+    });
+  }
+
+  /**
+   * ドラッグオーバースタイルをクリア
+   */
+  clearDragOverStyles() {
+    document.querySelectorAll('.drag-over').forEach(el => {
+      el.classList.remove('drag-over');
     });
   }
 
@@ -316,5 +440,9 @@ export class DragDropHandler {
       this.draggedElement.classList.remove('dragging');
       this.draggedElement = null;
     }
+    this.draggedTabId = null;
+    this.isDraggingGroupedTab = false;
+    this.draggedTabGroupId = null;
+    this.clearDragOverStyles();
   }
 }

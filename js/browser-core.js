@@ -12,6 +12,7 @@ import { DragDropHandler } from './ui/dragDrop.js';
 import { ModalManager } from './ui/modalManager.js';
 import { ErrorManager } from './ui/errorManager.js';
 import { IframeManager } from './ui/iframeManager.js';
+import { BookmarkManager } from './ui/bookmarkManager.js';
 import { normalizeUrl } from './utils/urlHelper.js';
 
 // グローバルインスタンス（init関数内で初期化）
@@ -26,6 +27,7 @@ let dragDropHandler;
 let modalManager;
 let errorManager;
 let iframeManager;
+let bookmarkManager;
 
 // ヘッダー除去設定
 async function setupHeaderRemoval() {
@@ -208,6 +210,17 @@ async function initManagers() {
   // IframeManagerを作成
   iframeManager = new IframeManager(tabManager, tabUI, errorManager);
 
+  // BookmarkManagerを作成
+  bookmarkManager = new BookmarkManager(storage, tabManager, {
+    onBookmarkAdded: (bookmark) => {
+      console.log('[PeekPanel] Bookmark added:', bookmark.title);
+    },
+    onBookmarkClick: (bookmark) => {
+      // ブックマークをクリックしたら新規タブで開く
+      tabManager.createTab(bookmark.url, true);
+    }
+  });
+
   // ContextMenuを作成
   contextMenu = new ContextMenu(tabManager, groupManager, {
     // タブメニュー
@@ -228,6 +241,7 @@ async function initManagers() {
     },
     onSendToMainBrowser: (tabId) => sendTabToMainBrowser(tabId),
     onCloseTab: (tabId) => tabManager.closeTab(tabId),
+    onAddToBookmark: (tabId) => bookmarkManager.addTabToBookmark(tabId),
 
     // グループメニュー
     onAddTabToGroup: (tabId, groupId) => {
@@ -519,6 +533,8 @@ function setupMessageHandlers() {
       contextMenu.closeMenu();
       // タブグループも閉じる
       groupManager.closeAllGroups();
+      // ブックマークメニューも閉じる
+      bookmarkManager.hideDropdown();
     } else if (event.data.type === 'updatePageTitle') {
       // ページタイトルとURLを更新（iframe内からの通知）
       if (event.data.url && event.data.title) {
@@ -685,6 +701,9 @@ async function init() {
 
   // UIイベントリスナーを設定
   setupUIEventListeners();
+
+  // ブックマークマネージャーを初期化
+  await bookmarkManager.init();
 
   // メッセージハンドラーを設定
   setupMessageHandlers();

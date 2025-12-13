@@ -374,6 +374,268 @@
       color: var(--text-secondary);
     }
 
+    .utility-button.bookmarked {
+      color: #f4c542;
+    }
+
+    /* ブックマークドロップダウン */
+    .bookmark-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .bookmark-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      width: 300px;
+      max-height: 450px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      z-index: 10001;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .bookmark-dropdown-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .bookmark-header-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .add-bookmark-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+
+    .add-bookmark-btn:hover {
+      background: var(--hover-bg);
+    }
+
+    .add-bookmark-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .bookmark-list {
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    /* フォルダ */
+    .bookmark-folder {
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .bookmark-folder:last-child {
+      border-bottom: none;
+    }
+
+    .bookmark-folder-header {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+      gap: 6px;
+    }
+
+    .bookmark-folder-header:hover {
+      background: var(--hover-bg);
+    }
+
+    .folder-collapse-icon {
+      font-size: 10px;
+      color: var(--text-secondary);
+      width: 12px;
+      cursor: pointer;
+    }
+
+    .folder-icon {
+      font-size: 14px;
+    }
+
+    .folder-name {
+      flex: 1;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .folder-count {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-right: 4px;
+    }
+
+    .bookmark-folder-content {
+      padding-left: 20px;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .bookmark-folder-content .bookmark-item {
+      padding-left: 8px;
+    }
+
+    /* ブックマーク項目 */
+    .bookmark-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+      gap: 8px;
+    }
+
+    .bookmark-item:hover {
+      background: var(--hover-bg);
+    }
+
+    .bookmark-favicon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .bookmark-title {
+      flex: 1;
+      font-size: 12px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* アクションボタン */
+    .bookmark-actions {
+      display: flex;
+      gap: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .bookmark-item:hover .bookmark-actions,
+    .bookmark-folder-header:hover .bookmark-actions {
+      opacity: 1;
+    }
+
+    .bookmark-action-btn {
+      width: 22px;
+      height: 22px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 11px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+
+    .bookmark-action-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    /* 編集入力欄 */
+    .bookmark-edit-input {
+      flex: 1;
+      padding: 4px 8px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--accent-color);
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-size: 12px;
+      outline: none;
+    }
+
+    /* 移動メニュー */
+    .bookmark-move-menu {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 10002;
+      min-width: 150px;
+      padding: 4px 0;
+    }
+
+    .move-menu-item {
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .move-menu-item:hover {
+      background: var(--hover-bg);
+    }
+
+    .move-menu-item.disabled {
+      color: var(--text-secondary);
+      cursor: not-allowed;
+    }
+
+    .move-menu-item.disabled:hover {
+      background: transparent;
+    }
+
+    .bookmark-empty {
+      padding: 24px 12px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    /* ドラッグ&ドロップ */
+    .bookmark-item.dragging {
+      opacity: 0.5;
+      background: var(--bg-tertiary);
+    }
+
+    .bookmark-item[draggable="true"] {
+      cursor: grab;
+    }
+
+    .bookmark-item[draggable="true"]:active {
+      cursor: grabbing;
+    }
+
+    .bookmark-folder-header.drag-over,
+    .bookmark-folder-content.drag-over {
+      background: rgba(66, 133, 244, 0.2);
+      border: 1px dashed var(--accent-color);
+      border-radius: 4px;
+    }
+
     .url-bar {
       flex: 1;
       height: 28px;
@@ -806,6 +1068,20 @@
       <button class="nav-button" id="reload" title="更新">↻</button>
     </div>
     <input type="text" class="url-bar" id="urlBar" placeholder="URLを入力...">
+    <div class="bookmark-wrapper">
+      <button class="utility-button" id="bookmarkButton" title="ブックマーク">⭐</button>
+      <div id="bookmarkDropdown" class="bookmark-dropdown" style="display: none;">
+        <div class="bookmark-dropdown-header">
+          <span>ブックマーク</span>
+          <div class="bookmark-header-actions">
+            <button id="addFolderBtn" class="add-bookmark-btn" title="新しいフォルダ">📁</button>
+            <button id="addBookmarkBtn" class="add-bookmark-btn" title="現在のページを追加">＋</button>
+          </div>
+        </div>
+        <div id="bookmarkList" class="bookmark-list"></div>
+        <div id="bookmarkEmpty" class="bookmark-empty">ブックマークがありません</div>
+      </div>
+    </div>
     <button class="utility-button" id="sendToMainBrowser" title="Switch to Main Browser">🔗</button>
     <button class="utility-button" id="settingsButton" title="設定">⚙️</button>
   </div>
