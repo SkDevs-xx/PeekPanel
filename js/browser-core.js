@@ -147,6 +147,7 @@ async function initManagers() {
 
   // DragDropHandlerにGroupUIを設定
   dragDropHandler.groupUI = groupUI;
+  dragDropHandler.setGroupManager(groupManager);
 
   // NavigationUIを作成
   navigationUI = new NavigationUI(tabManager, {
