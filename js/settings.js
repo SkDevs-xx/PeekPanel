@@ -1,5 +1,6 @@
 // 共通モジュールからインポート
 import { DEFAULT_PROMPTS } from './config/constants.js';
+import { ICON_MESSAGE_SQUARE } from './config/icons.js';
 import { applyFaviconWithFallback } from './utils/favicon.js';
 import { getTimeAgo } from './utils/timeHelper.js';
 import { showToast, hideModal } from './utils/uiHelper.js';
@@ -99,11 +100,14 @@ document.querySelectorAll('input[name="theme"]').forEach(radio => {
   });
 });
 
+// Extension origin for secure postMessage
+const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1) || '*';
+
 // 閉じるボタンのイベントリスナー
 document.getElementById('closeButton').addEventListener('click', () => {
   window.parent.postMessage({
     type: 'closeSettings'
-  }, '*');
+  }, EXTENSION_ORIGIN);
 });
 
 // 履歴表示機能
@@ -178,7 +182,7 @@ async function restoreTab(index) {
     type: 'restoreTab',
     tabData: closedTab,
     index: index
-  }, '*');
+  }, EXTENSION_ORIGIN);
 }
 
 // 履歴クリア確認モーダルを閉じる
@@ -263,37 +267,74 @@ function createPromptCard(prompt) {
     card.classList.add('disabled');
   }
 
-  card.innerHTML = `
-    <div class="prompt-header">
-      <div class="prompt-icon">📝</div>
-      <div class="prompt-name">${prompt.name}</div>
-      ${prompt.isDefault ? '<span class="default-badge">デフォルト</span>' : ''}
-    </div>
-    <div class="prompt-text">${prompt.prompt.replace(/{text}/g, '{選択テキスト}')}</div>
-    <div class="prompt-actions">
-      <label class="toggle-label">
-        <input type="checkbox" ${prompt.enabled ? 'checked' : ''} data-prompt-id="${prompt.id}">
-        有効
-      </label>
-      <button class="button button-small button-normal edit-prompt-btn" data-prompt-id="${prompt.id}">編集</button>
-      ${!prompt.isDefault ? `<button class="button button-small button-danger delete-prompt-btn" data-prompt-id="${prompt.id}">削除</button>` : ''}
-    </div>
-  `;
+  // Build DOM elements to avoid XSS from user-controlled prompt data
+  const header = document.createElement('div');
+  header.className = 'prompt-header';
+
+  const icon = document.createElement('div');
+  icon.className = 'prompt-icon';
+  icon.innerHTML = ICON_MESSAGE_SQUARE;
+  header.appendChild(icon);
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'prompt-name';
+  nameEl.textContent = prompt.name;
+  header.appendChild(nameEl);
+
+  if (prompt.isDefault) {
+    const badge = document.createElement('span');
+    badge.className = 'default-badge';
+    badge.textContent = 'デフォルト';
+    header.appendChild(badge);
+  }
+
+  const textEl = document.createElement('div');
+  textEl.className = 'prompt-text';
+  textEl.textContent = prompt.prompt.replace(/{text}/g, '{選択テキスト}');
+
+  const actions = document.createElement('div');
+  actions.className = 'prompt-actions';
+
+  const toggleLabel = document.createElement('label');
+  toggleLabel.className = 'toggle-label';
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = prompt.enabled;
+  checkbox.dataset.promptId = prompt.id;
+  toggleLabel.appendChild(checkbox);
+  toggleLabel.appendChild(document.createTextNode(' 有効'));
+  actions.appendChild(toggleLabel);
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'button button-small button-normal edit-prompt-btn';
+  editBtn.dataset.promptId = prompt.id;
+  editBtn.textContent = '編集';
+  actions.appendChild(editBtn);
+
+  if (!prompt.isDefault) {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'button button-small button-danger delete-prompt-btn';
+    deleteBtn.dataset.promptId = prompt.id;
+    deleteBtn.textContent = '削除';
+    actions.appendChild(deleteBtn);
+  }
+
+  card.appendChild(header);
+  card.appendChild(textEl);
+  card.appendChild(actions);
 
   // イベントリスナーを追加
-  const checkbox = card.querySelector('input[type="checkbox"]');
   checkbox.addEventListener('change', (e) => {
     togglePrompt(prompt.id, e.target.checked);
   });
 
-  const editBtn = card.querySelector('.edit-prompt-btn');
   editBtn.addEventListener('click', () => {
     editPrompt(prompt.id);
   });
 
   if (!prompt.isDefault) {
-    const deleteBtn = card.querySelector('.delete-prompt-btn');
-    deleteBtn.addEventListener('click', () => {
+    const deleteBtnEl = card.querySelector('.delete-prompt-btn');
+    deleteBtnEl.addEventListener('click', () => {
       deletePrompt(prompt.id);
     });
   }
@@ -333,7 +374,7 @@ function addNewPrompt() {
       return;
     }
     const newPrompt = {
-      id: `custom-${Date.now()}`,
+      id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: name,
       prompt: prompt,
       enabled: true,
@@ -402,7 +443,7 @@ async function editPrompt(promptId) {
 
       // デフォルトをコピーしてカスタムに
       const newCustomPrompt = {
-        id: `custom-${Date.now()}`,
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         name: name,
         prompt: promptText,
         enabled: true,

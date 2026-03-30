@@ -9,15 +9,6 @@
   // iframe内でない場合も実行しない
   const isInIframe = window.self !== window.top;
 
-  // デバッグログ
-  console.log('[PeekPanel Content Script]', {
-    protocol: window.location.protocol,
-    href: window.location.href,
-    isExtensionPage,
-    isInIframe,
-    willExecute: !isExtensionPage && isInIframe
-  });
-
   // 拡張機能内部ページまたはiframe外では何もしない
   if (isExtensionPage || !isInIframe) {
     return;
@@ -35,13 +26,18 @@
     let titleObserver = null;
     let mediaObserver = null;
     let titleCheckInterval = null;
+    let urlCheckInterval = null;
+    let currentMuteState = false;
 
     // 拡張機能のオリジンを取得（セキュリティ強化）
-    const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1) || '*';
+    // chrome.runtimeが利用不可の場合はundefinedのまま保持（'*'フォールバックは使用しない）
+    const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1);
 
     // 安全にpostMessageを送信するヘルパー関数
     function safePostMessage(message, targetOrigin = EXTENSION_ORIGIN) {
       try {
+        // オリジンが不明な場合は送信しない（セキュリティ対策）
+        if (!targetOrigin) return;
         // window.parentが存在し、かつ自分自身でないことを確認
         if (window.parent && window.parent !== window) {
           window.parent.postMessage(message, targetOrigin);
@@ -68,6 +64,10 @@
       if (titleCheckInterval) {
         clearInterval(titleCheckInterval);
         titleCheckInterval = null;
+      }
+      if (urlCheckInterval) {
+        clearInterval(urlCheckInterval);
+        urlCheckInterval = null;
       }
     }
 
@@ -175,6 +175,11 @@
 
     // タイトルの変更を監視（DOMContentLoaded後に設定）
     function setupTitleObserver(retryCount = 0) {
+      // 既存のObserverをdisconnectしてから新規作成（二重登録防止）
+      if (titleObserver) {
+        titleObserver.disconnect();
+        titleObserver = null;
+      }
       const titleElement = document.querySelector('title');
       if (titleElement) {
         titleObserver = new MutationObserver(sendTitle);
@@ -203,13 +208,19 @@
     }, 5000);
 
     // 親ウィンドウからのミュート/ミュート解除メッセージを受信
+    // currentMuteStateの更新とメディア操作を1つのリスナーで処理（二重登録防止）
     window.addEventListener('message', (event) => {
+      // Validate origin to only accept messages from the extension
+      if (!EXTENSION_ORIGIN || event.origin !== EXTENSION_ORIGIN) return;
+
       if (event.data.type === 'muteMedia') {
+        currentMuteState = true;
         // すべてのaudio/video要素をミュート
         document.querySelectorAll('audio, video').forEach(media => {
           media.muted = true;
         });
       } else if (event.data.type === 'unmuteMedia') {
+        currentMuteState = false;
         // すべてのaudio/video要素のミュートを解除
         document.querySelectorAll('audio, video').forEach(media => {
           media.muted = false;
@@ -218,7 +229,6 @@
     });
 
     // 新しく追加されるaudio/video要素も監視してミュート状態を適用
-    let currentMuteState = false;
     mediaObserver = new MutationObserver((mutations) => {
       if (currentMuteState) {
         document.querySelectorAll('audio, video').forEach(media => {
@@ -229,11 +239,15 @@
 
     // body要素が存在する場合に監視を開始（レースコンディション対策）
     function startMediaObserver(retryCount = 0) {
-      if (document.body) {
-        mediaObserver.observe(document.body, {
-          childList: true,
-          subtree: true
-        });
+      if (document.body && mediaObserver) {
+        try {
+          mediaObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
+        } catch (e) {
+          console.error('[PeekPanel] Failed to observe media:', e);
+        }
       } else if (retryCount < 10) {
         // 最大10回までリトライ
         setTimeout(() => startMediaObserver(retryCount + 1), 100);
@@ -247,14 +261,38 @@
       startMediaObserver();
     }
 
-    // ミュート状態を更新
-    window.addEventListener('message', (event) => {
-      if (event.data.type === 'muteMedia') {
-        currentMuteState = true;
-      } else if (event.data.type === 'unmuteMedia') {
-        currentMuteState = false;
-      }
+    // ページロード時にナビゲーションを検出（マウスサイドボタンでの戻る/進む）
+    // document_start で実行されるため、ページロード直後にメッセージを送る
+    safePostMessage({
+      type: 'pageLoaded',
+      url: window.location.href,
+      title: document.title || ''
     });
+
+    // マウスサイドボタンでのナビゲーションを検出（popstateイベント）
+    window.addEventListener('popstate', (e) => {
+      // ブラウザの戻る/進む機能でページ遷移が発生した
+      safePostMessage({
+        type: 'historyNavigated',
+        url: window.location.href,
+        title: document.title
+      });
+    });
+
+    // URLが変更された時のバックアップ検出（SPAなど）
+    let lastUrl = window.location.href;
+    urlCheckInterval = setInterval(() => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl) {
+        lastUrl = currentUrl;
+        // popstateで検出できない場合のフォールバック
+        safePostMessage({
+          type: 'urlChanged',
+          url: currentUrl,
+          title: document.title
+        });
+      }
+    }, 1000);
   } catch (error) {
     // Extension context invalidatedエラーを無視
     // 拡張機能のリロード後に古いコンテンツスクリプトが実行される場合に発生

@@ -17,7 +17,7 @@
     }
 
     .settings-sidebar {
-      width: 200px;
+      width: 180px;
       background: var(--bg-secondary);
       border-right: 1px solid var(--border-color);
       display: flex;
@@ -28,19 +28,24 @@
     .settings-nav {
       flex: 1;
       overflow-y: auto;
-      padding: 8px 0;
+      padding: 8px;
     }
 
     .settings-nav-item {
-      padding: 12px 20px;
+      padding: 8px 12px;
       cursor: pointer;
       color: var(--text-secondary);
-      font-size: 14px;
-      transition: all 0.2s;
-      border-left: 3px solid transparent;
+      font-size: 13px;
+      transition: all 0.15s;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .settings-nav-item svg {
+      opacity: 0.6;
     }
 
     .settings-nav-item:hover {
@@ -48,17 +53,30 @@
       color: var(--text-primary);
     }
 
+    .settings-nav-item:hover svg {
+      opacity: 1;
+    }
+
     .settings-nav-item.active {
       color: var(--text-primary);
-      background: var(--bg-primary);
-      border-left-color: var(--accent-color);
+      background: var(--bg-tertiary);
       font-weight: 500;
+    }
+
+    .settings-nav-item.active svg {
+      opacity: 1;
+      color: var(--accent-color);
     }
 
     .settings-content {
       flex: 1;
       overflow-y: auto;
-      padding: 20px 40px;
+      padding: 24px 32px;
+      scrollbar-width: none;
+    }
+
+    .settings-content::-webkit-scrollbar {
+      display: none;
     }
 
     .settings-section {
@@ -74,21 +92,23 @@
     }
 
     .settings-page-header {
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .settings-page-header h2 {
-      font-size: 24px;
-      margin-bottom: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
     }
 
     .settings-page-header p {
       color: var(--text-secondary);
-      font-size: 14px;
+      font-size: 12px;
+      line-height: 1.5;
     }
 
     .settings-footer {
-      padding: 16px 40px;
+      padding: 8px 24px;
       border-top: 1px solid var(--border-color);
       display: flex;
       justify-content: space-between;
@@ -106,40 +126,40 @@
     .history-item {
       display: flex;
       align-items: center;
-      padding: 12px;
-      border-bottom: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: 6px;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: background 0.15s;
+      gap: 10px;
     }
 
     .history-item:hover {
-      background-color: var(--hover-bg);
+      background: var(--hover-bg);
     }
 
     .history-favicon {
-      width: 16px;
-      height: 16px;
-      margin-right: 12px;
+      width: 20px;
+      height: 20px;
       flex-shrink: 0;
+      border-radius: 3px;
     }
 
     .history-info {
       flex: 1;
       min-width: 0;
-      margin-right: 12px;
     }
 
     .history-title {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--text-primary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 4px;
+      margin-bottom: 1px;
     }
 
     .history-url {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-secondary);
       white-space: nowrap;
       overflow: hidden;
@@ -147,7 +167,7 @@
     }
 
     .history-time {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-secondary);
       white-space: nowrap;
       flex-shrink: 0;
@@ -157,7 +177,7 @@
       text-align: center;
       padding: 40px 0;
       color: var(--text-secondary);
-      font-size: 14px;
+      font-size: 13px;
     }
   </style>
 </head>
@@ -167,13 +187,16 @@
   <div class="settings-sidebar">
     <nav class="settings-nav">
       <div class="settings-nav-item active" data-page="prompts">
-        📝 カスタムプロンプト
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5l-3 2V3z"/></svg>
+        <span>カスタムプロンプト</span>
       </div>
       <div class="settings-nav-item" data-page="history">
-        🕐 閲覧履歴
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><polyline points="8 5 8 8 10.5 8"/></svg>
+        <span>閲覧履歴</span>
       </div>
       <div class="settings-nav-item" data-page="system">
-        💻 システム
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="12" x2="8" y2="14"/></svg>
+        <span>システム</span>
       </div>
     </nav>
   </div>
@@ -192,8 +215,8 @@
           <!-- プロンプトカードが動的に追加される -->
         </div>
 
-        <button class="button button-primary" id="addPromptButton" style="margin-top: 12px;">
-          ➕ 新しいプロンプトを追加
+        <button class="button button-primary" id="addPromptButton" style="margin-top: 8px;">
+          新しいプロンプトを追加
         </button>
       </div>
 
@@ -208,8 +231,8 @@
           <!-- 履歴リストがここに表示されます -->
         </div>
 
-        <button class="button button-danger" id="clearHistoryButton" style="margin-top: 20px;">
-          🗑️ 履歴をすべて削除
+        <button class="button button-danger" id="clearHistoryButton" style="margin-top: 0;">
+          履歴をすべて削除
         </button>
       </div>
 
@@ -225,61 +248,61 @@
           <div class="setting-description">
             画面の外観を変更します
           </div>
-          <div class="radio-group" style="margin-top: 12px;">
+          <div class="radio-group" style="margin-top: 8px;">
             <div class="radio-option">
               <input type="radio" id="theme-light" name="theme" value="light">
-              <label for="theme-light">☀️ ライト</label>
+              <label for="theme-light"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/><line x1="3.1" y1="3.1" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.9" y2="12.9"/><line x1="12.9" y1="3.1" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3.1" y2="12.9"/></svg> ライト</label>
             </div>
             <div class="radio-option">
               <input type="radio" id="theme-dark" name="theme" value="dark">
-              <label for="theme-dark">🌙 ダーク</label>
+              <label for="theme-dark"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10A5 5 0 0 1 7 5a5 5 0 0 0 6 6z"/><path d="M13 2l.5 1.5L15 4l-1.5.5L13 6l-.5-1.5L11 4l1.5-.5z" fill="currentColor" stroke="none"/></svg> ダーク</label>
             </div>
             <div class="radio-option">
               <input type="radio" id="theme-system" name="theme" value="system" checked>
-              <label for="theme-system">💻 システム設定に従う</label>
+              <label for="theme-system"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="12" x2="8" y2="14"/></svg> システム設定に従う</label>
             </div>
           </div>
         </div>
 
-        <div class="setting-section" style="margin-top: 20px;">
+        <div class="setting-section" style="margin-top: 0;">
           <label class="setting-label">自動送信</label>
           <div class="setting-description">
             テキスト入力後に自動的に送信ボタンをクリックします
           </div>
-          <div class="radio-option" style="margin-top: 12px;">
+          <div class="radio-option" style="margin-top: 8px;">
             <input type="checkbox" id="auto-submit" name="autoSubmit">
             <label for="auto-submit">テキスト入力後に自動送信する</label>
           </div>
         </div>
 
-        <div class="setting-section" style="margin-top: 20px;">
+        <div class="setting-section" style="margin-top: 0;">
           <label class="setting-label">タブの自動スリープ</label>
           <div class="setting-description">
             一定時間使用していないタブを自動的にスリープさせ、メモリを節約します
           </div>
-          <div class="radio-option" style="margin-top: 12px;">
+          <div class="radio-option" style="margin-top: 8px;">
             <input type="checkbox" id="auto-sleep-enabled" name="autoSleepEnabled">
             <label for="auto-sleep-enabled">タブの自動スリープを有効にする</label>
           </div>
 
-          <div style="margin-top: 12px;">
+          <div style="margin-top: 8px;">
             <label for="auto-sleep-minutes"
-              style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary);">
+              style="display: block; margin-bottom: 4px; font-size: 12px; color: var(--text-secondary);">
               スリープまでの時間（分）
             </label>
             <input type="number" id="auto-sleep-minutes" name="autoSleepMinutes" min="1" max="60" value="5"
-              style="width: 100px; padding: 6px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+              style="width: 80px; padding: 5px 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-size: 13px;">
           </div>
 
-          <div style="margin-top: 12px;">
+          <div style="margin-top: 8px;">
             <label for="no-sleep-domains"
-              style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary);">
+              style="display: block; margin-bottom: 4px; font-size: 12px; color: var(--text-secondary);">
               スリープ禁止ドメイン（1行に1つ）
             </label>
-            <textarea id="no-sleep-domains" name="noSleepDomains" rows="5"
+            <textarea id="no-sleep-domains" name="noSleepDomains" rows="4"
               placeholder="youtube.com&#10;music.youtube.com&#10;twitch.tv"
-              style="width: 100%; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
-            <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">
+              style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; resize: vertical;"></textarea>
+            <div style="margin-top: 2px; font-size: 10px; color: var(--text-secondary); opacity: 0.7;">
               デフォルト: youtube.com, youtu.be, music.youtube.com, twitch.tv
             </div>
           </div>
@@ -307,18 +330,18 @@
       <div class="modal-body">
         <div class="form-group">
           <label for="promptName">プロンプト名</label>
-          <input type="text" id="promptName" placeholder="例: コードをレビュー" style="width: 100%; padding: 8px; background: var(--bg-secondary);
-                        border: 1px solid var(--border-color); border-radius: 4px;
-                        color: var(--text-primary);">
+          <input type="text" id="promptName" placeholder="例: コードをレビュー" style="width: 100%; padding: 7px 10px; background: var(--bg-tertiary);
+                        border: 1px solid var(--border-color); border-radius: 6px;
+                        color: var(--text-primary); font-size: 13px; outline: none;">
         </div>
 
         <div class="form-group">
           <label for="promptText">プロンプト文</label>
-          <textarea id="promptText" rows="8" placeholder="例: 次のコードをレビューして、改善点を提案してください:
+          <textarea id="promptText" rows="6" placeholder="例: 次のコードをレビューして、改善点を提案してください:
 
-{text}" style="width: 100%; padding: 8px; background: var(--bg-secondary);
-                           border: 1px solid var(--border-color); border-radius: 4px;
-                           color: var(--text-primary); font-family: monospace; resize: vertical;"></textarea>
+{text}" style="width: 100%; padding: 8px 10px; background: var(--bg-tertiary);
+                           border: 1px solid var(--border-color); border-radius: 6px;
+                           color: var(--text-primary); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; resize: vertical; outline: none;"></textarea>
           <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">
             {text} の部分に選択したテキストが挿入されます
           </div>

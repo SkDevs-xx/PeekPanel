@@ -1,3 +1,5 @@
+import { ICON_CHEVRON_RIGHT, ICON_CHEVRON_DOWN } from '../config/icons.js';
+
 /**
  * グループUI管理クラス
  * グループ要素のレンダリングとイベントハンドリングを担当
@@ -61,7 +63,7 @@ export class GroupUI {
 
     const arrow = document.createElement('span');
     arrow.className = 'group-arrow';
-    arrow.textContent = group.isCollapsed ? '▶' : '▼';
+    arrow.innerHTML = group.isCollapsed ? ICON_CHEVRON_RIGHT : ICON_CHEVRON_DOWN;
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'group-name';
@@ -228,7 +230,7 @@ export class GroupUI {
         tabsWrapper.classList.add('collapsed');
       }
       if (arrow) {
-        arrow.textContent = '▶';
+        arrow.innerHTML = ICON_CHEVRON_RIGHT;
       }
     } else {
       // 開く
@@ -253,7 +255,7 @@ export class GroupUI {
         }
       }
       if (arrow) {
-        arrow.textContent = '▼';
+        arrow.innerHTML = ICON_CHEVRON_DOWN;
       }
     }
   }

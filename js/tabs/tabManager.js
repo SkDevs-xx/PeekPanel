@@ -152,7 +152,8 @@ export class TabManager extends EventEmitter {
       }
     }
 
-    this.save();
+    // Use immediate save to prevent data loss if panel closes within debounce window
+    this.saveImmediate();
   }
 
   /**

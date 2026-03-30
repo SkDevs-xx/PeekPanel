@@ -135,16 +135,16 @@ export const AI_CONFIGS = {
 
 // グループの色定義（Chromeの標準カラーに合わせた10色）
 export const GROUP_COLORS = [
-  { id: 'grey', color: '#5F6368', label: 'グレー', emoji: '⚪' },
-  { id: 'pink', color: '#D93B93', label: 'ピンク', emoji: '🟣' },
-  { id: 'blue', color: '#1A73E8', label: '青', emoji: '🔵' },
-  { id: 'cyan', color: '#007B83', label: 'シアン', emoji: '🔷' },
-  { id: 'green', color: '#188038', label: '緑', emoji: '🟢' },
-  { id: 'yellow', color: '#E37400', label: '黄色', emoji: '🟡' },
-  { id: 'orange', color: '#E8710A', label: 'オレンジ', emoji: '🟠' },
-  { id: 'red', color: '#C5221F', label: '赤', emoji: '🔴' },
-  { id: 'purple', color: '#A142F4', label: '紫', emoji: '🟣' },
-  { id: 'lightblue', color: '#8AB4F8', label: 'ライトブルー', emoji: '🔵' }
+  { id: 'grey', color: '#5F6368', label: 'グレー' },
+  { id: 'pink', color: '#D93B93', label: 'ピンク' },
+  { id: 'blue', color: '#1A73E8', label: '青' },
+  { id: 'cyan', color: '#007B83', label: 'シアン' },
+  { id: 'green', color: '#188038', label: '緑' },
+  { id: 'yellow', color: '#E37400', label: '黄色' },
+  { id: 'orange', color: '#E8710A', label: 'オレンジ' },
+  { id: 'red', color: '#C5221F', label: '赤' },
+  { id: 'purple', color: '#A142F4', label: '紫' },
+  { id: 'lightblue', color: '#8AB4F8', label: 'ライトブルー' }
 ];
 
 // タイミング定数
@@ -181,4 +181,4 @@ export const ERROR_MESSAGES = {
 };
 
 // デフォルトファビコン
-export const DEFAULT_FAVICON = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🌐</text></svg>';
+export const DEFAULT_FAVICON = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="%239aa0a6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12"/><path d="M8 2a8 8 0 0 1 2 6 8 8 0 0 1-2 6"/><path d="M8 2a8 8 0 0 0-2 6 8 8 0 0 0 2 6"/></svg>');

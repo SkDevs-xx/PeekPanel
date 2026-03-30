@@ -45,11 +45,6 @@
                     "header": "Sec-Fetch-Mode",
                     "operation": "set",
                     "value": "navigate"
-                },
-                {
-                    "header": "Sec-Fetch-Site",
-                    "operation": "set",
-                    "value": "same-origin"
                 }
             ]
         },
@@ -73,16 +68,12 @@
                 "www.x.com"
             ],
             "resourceTypes": [
-                "main_frame",
                 "sub_frame",
-                "xmlhttprequest",
-                "script",
                 "stylesheet",
                 "image",
                 "media",
-                "websocket",
-                "other",
-                "font"
+                "font",
+                "script"
             ]
         }
     },
@@ -132,11 +123,6 @@
                     "header": "Sec-Fetch-Mode",
                     "operation": "set",
                     "value": "navigate"
-                },
-                {
-                    "header": "Sec-Fetch-Site",
-                    "operation": "set",
-                    "value": "same-origin"
                 }
             ]
         },
@@ -151,16 +137,12 @@
                 "failover-urls.api.twitter.com"
             ],
             "resourceTypes": [
-                "main_frame",
                 "sub_frame",
-                "xmlhttprequest",
-                "script",
                 "stylesheet",
                 "image",
                 "media",
-                "websocket",
-                "other",
-                "font"
+                "font",
+                "script"
             ]
         }
     },
@@ -210,11 +192,6 @@
                     "header": "Sec-Fetch-Mode",
                     "operation": "set",
                     "value": "navigate"
-                },
-                {
-                    "header": "Sec-Fetch-Site",
-                    "operation": "set",
-                    "value": "same-origin"
                 }
             ]
         },
@@ -227,16 +204,12 @@
                 "ton.twimg.com"
             ],
             "resourceTypes": [
-                "main_frame",
                 "sub_frame",
-                "xmlhttprequest",
-                "script",
                 "stylesheet",
                 "image",
                 "media",
-                "websocket",
-                "other",
-                "font"
+                "font",
+                "script"
             ]
         }
     },
@@ -286,11 +259,6 @@
                     "header": "Sec-Fetch-Mode",
                     "operation": "set",
                     "value": "navigate"
-                },
-                {
-                    "header": "Sec-Fetch-Site",
-                    "operation": "set",
-                    "value": "same-origin"
                 }
             ]
         },
@@ -302,16 +270,59 @@
                 "ads-twitter.com"
             ],
             "resourceTypes": [
-                "main_frame",
                 "sub_frame",
-                "xmlhttprequest",
-                "script",
                 "stylesheet",
                 "image",
                 "media",
-                "websocket",
-                "other",
-                "font"
+                "font",
+                "script"
+            ]
+        }
+    },
+    {
+        "id": 5,
+        "priority": 100,
+        "action": {
+            "type": "modifyHeaders",
+            "responseHeaders": [
+                {
+                    "header": "x-frame-options",
+                    "operation": "remove"
+                },
+                {
+                    "header": "content-security-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-opener-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-embedder-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "cross-origin-resource-policy",
+                    "operation": "remove"
+                },
+                {
+                    "header": "link",
+                    "operation": "remove"
+                }
+            ]
+        },
+        "condition": {
+            "requestDomains": [
+                "grok.com",
+                "cdn.grok.com"
+            ],
+            "resourceTypes": [
+                "sub_frame",
+                "stylesheet",
+                "image",
+                "media",
+                "font",
+                "script"
             ]
         }
     }

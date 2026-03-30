@@ -100,7 +100,7 @@ export class ModalManager {
           <button class="group-modal-close">✕</button>
         </div>
         <div class="group-modal-body">
-          <p style="color: var(--text-primary); font-size: 14px; line-height: 1.6; margin-bottom: 8px;">グループ「${group.name}」とグループ内の${tabCount}個のタブを削除しますか？</p>
+          <p class="modal-confirm-text" style="color: var(--text-primary); font-size: 14px; line-height: 1.6; margin-bottom: 8px;"></p>
           <p style="color: var(--text-secondary); font-size: 13px;">この操作は取り消せません。</p>
         </div>
         <div class="group-modal-footer">
@@ -109,6 +109,8 @@ export class ModalManager {
         </div>
       </div>
     `;
+    // Set text content safely to prevent XSS via group name
+    modal.querySelector('.modal-confirm-text').textContent = `グループ「${group.name}」とグループ内の${tabCount}個のタブを削除しますか？`;
 
     // 削除ボタン
     modal.querySelector('.delete-button').onclick = () => {
@@ -143,8 +145,8 @@ export class ModalManager {
           <button class="group-modal-close">✕</button>
         </div>
         <div class="group-modal-body">
-          <p style="color: var(--text-primary); font-size: 14px; line-height: 1.6; margin-bottom: 8px;">グループ「${group.name}」を解除しますか？</p>
-          <p style="color: var(--text-secondary); font-size: 13px;">グループ内の${tabCount}個のタブはグループから外されます。</p>
+          <p class="modal-confirm-text" style="color: var(--text-primary); font-size: 14px; line-height: 1.6; margin-bottom: 8px;"></p>
+          <p class="modal-sub-text" style="color: var(--text-secondary); font-size: 13px;"></p>
         </div>
         <div class="group-modal-footer">
           <button class="group-modal-button secondary cancel-button">キャンセル</button>
@@ -152,6 +154,9 @@ export class ModalManager {
         </div>
       </div>
     `;
+    // Set text content safely to prevent XSS via group name
+    modal.querySelector('.modal-confirm-text').textContent = `グループ「${group.name}」を解除しますか？`;
+    modal.querySelector('.modal-sub-text').textContent = `グループ内の${tabCount}個のタブはグループから外されます。`;
 
     // 解除ボタン
     modal.querySelector('.ungroup-button').onclick = () => {

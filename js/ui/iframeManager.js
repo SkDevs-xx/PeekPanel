@@ -9,6 +9,7 @@ export class IframeManager {
     this.tabManager = tabManager;
     this.tabUI = tabUI;
     this.errorManager = errorManager;
+    this._loadTimeouts = new Map(); // タイムアウトをtabId単位で管理
   }
 
   /**
@@ -24,19 +25,27 @@ export class IframeManager {
     iframe.id = tabId;
     // content-scriptで識別するためにname属性を設定
     iframe.name = `peekpanel-view-${tabId}`;
-    iframe.allow = 'camera; clipboard-write; fullscreen; microphone; geolocation';
+    // Permissions Policy: カメラ・マイク・位置情報は不要なため除外
+    iframe.allow = 'fullscreen *; clipboard-write; encrypted-media; autoplay; picture-in-picture';
 
     // タイムアウト検知（60秒）- 内部ページは除外
-    let loadTimeout = setTimeout(() => {
+    // 既存のタイムアウトをクリア（リロード・タブ復帰時のリーク防止）
+    if (this._loadTimeouts.has(tabId)) {
+      clearTimeout(this._loadTimeouts.get(tabId));
+    }
+    const loadTimeout = setTimeout(() => {
+      this._loadTimeouts.delete(tabId);
       const tab = this.tabManager.getTab(tabId);
       if (tab && !tab.isInternal && !tab.isLoaded && !tab.hasError && iframe.src && iframe.src !== 'about:blank') {
         this.errorManager.handleIframeError(tabId, 'timeout');
       }
     }, 60000);
+    this._loadTimeouts.set(tabId, loadTimeout);
 
     // エラー検知 - 内部ページは除外
     iframe.addEventListener('error', (e) => {
-      clearTimeout(loadTimeout);
+      clearTimeout(this._loadTimeouts.get(tabId));
+      this._loadTimeouts.delete(tabId);
       const tab = this.tabManager.getTab(tabId);
       if (tab && !tab.isInternal) {
         console.error('[IframeManager] iframe error:', e);
@@ -46,7 +55,8 @@ export class IframeManager {
 
     // iframeのロード完了時にタイトルを更新
     iframe.addEventListener('load', () => {
-      clearTimeout(loadTimeout);
+      clearTimeout(this._loadTimeouts.get(tabId));
+      this._loadTimeouts.delete(tabId);
       try {
         const currentUrl = iframe.src;
         const tab = this.tabManager.getTab(tabId);
@@ -92,6 +102,8 @@ export class IframeManager {
       url.startsWith('chrome://') ||
       url.startsWith('chrome-extension://') ||
       url.startsWith('edge://') ||
+      url.startsWith('file://') ||
+      url.startsWith('data:') ||
       (url.startsWith('about:') && url !== 'about:blank')
     );
 

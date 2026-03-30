@@ -11,8 +11,7 @@
     "contextMenus",
     "storage",
     "scripting",
-    "tabs",
-    "cookies"
+    "tabs"
   ],
   "declarative_net_request": {
     "rule_resources": [

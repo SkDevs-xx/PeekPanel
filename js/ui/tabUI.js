@@ -1,6 +1,7 @@
 import { DEFAULT_FAVICON } from '../config/constants.js';
 import { getRealFavicon } from '../utils/favicon.js';
 import { getTabTitle } from '../utils/urlHelper.js';
+import { ICON_PIN, ICON_VOLUME_X, ICON_ALERT_TRIANGLE } from '../config/icons.js';
 
 /**
  * タブUI管理クラス
@@ -100,15 +101,15 @@ export class TabUI {
     // ピン留めインジケーター
     const pinIndicator = document.createElement('span');
     pinIndicator.className = 'pin-indicator';
-    pinIndicator.textContent = '📌';
     pinIndicator.style.display = tabData.isPinned ? '' : 'none';
+    pinIndicator.innerHTML = ICON_PIN;
     tabElement.appendChild(pinIndicator);
 
     // ミュートインジケーター
     const muteIndicator = document.createElement('span');
     muteIndicator.className = 'mute-indicator';
-    muteIndicator.textContent = '🔇';
     muteIndicator.style.display = tabData.isMuted ? '' : 'none';
+    muteIndicator.innerHTML = ICON_VOLUME_X;
     tabElement.appendChild(muteIndicator);
 
     // クリックイベント
@@ -282,7 +283,12 @@ export class TabUI {
     const img = tabElement.querySelector('.tab-favicon');
     if (img) {
       // エラーアイコンに変更
-      img.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">⚠️</text></svg>';
+      img.style.display = 'none';
+      const errorIcon = document.createElement('span');
+      errorIcon.style.display = 'inline-flex';
+      errorIcon.style.alignItems = 'center';
+      errorIcon.innerHTML = ICON_ALERT_TRIANGLE;
+      img.parentElement.insertBefore(errorIcon, img);
 
       // タブにエラークラスを追加
       tabElement.classList.add('tab-error');

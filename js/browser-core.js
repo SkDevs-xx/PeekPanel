@@ -28,6 +28,7 @@ let modalManager;
 let errorManager;
 let iframeManager;
 let bookmarkManager;
+let autoSleepInterval = null;
 
 // ヘッダー除去設定
 async function setupHeaderRemoval() {
@@ -164,9 +165,11 @@ async function initManagers() {
         if (iframe && tab) {
           iframe.src = tab.url;
 
-          // 少し後にフラグをリセット
-          setTimeout(() => {
+          // 連続クリック時に前のタイムアウトをキャンセルしてからリセット（デバウンス）
+          if (tab._navHistoryTimeout) clearTimeout(tab._navHistoryTimeout);
+          tab._navHistoryTimeout = setTimeout(() => {
             tab.isNavigatingHistory = false;
+            tab._navHistoryTimeout = null;
           }, 500);
         }
       } else {
@@ -186,9 +189,11 @@ async function initManagers() {
         if (iframe && tab) {
           iframe.src = tab.url;
 
-          // 少し後にフラグをリセット
-          setTimeout(() => {
+          // 連続クリック時に前のタイムアウトをキャンセルしてからリセット（デバウンス）
+          if (tab._navHistoryTimeout) clearTimeout(tab._navHistoryTimeout);
+          tab._navHistoryTimeout = setTimeout(() => {
             tab.isNavigatingHistory = false;
+            tab._navHistoryTimeout = null;
           }, 500);
         }
       } else {
@@ -232,9 +237,17 @@ async function initManagers() {
       const tab = tabManager.getTab(tabId);
       const iframe = document.getElementById(tabId);
       if (iframe && iframe.contentWindow && tab) {
-        // content-script.jsにpostMessageを送信
+        // content-script.jsにpostMessageを送信（targetOriginをiframeのオリジンに限定）
         const messageType = tab.isMuted ? 'muteMedia' : 'unmuteMedia';
-        iframe.contentWindow.postMessage({ type: messageType }, '*');
+        let targetOrigin;
+        try {
+          targetOrigin = new URL(tab.url).origin;
+        } catch (e) {
+          // URLが無効な場合は送信しない（'*'へのフォールバックはセキュリティリスクのため使用しない）
+          console.warn('[PeekPanel] Invalid tab URL, cannot send mute message:', tab.url);
+          return;
+        }
+        iframe.contentWindow.postMessage({ type: messageType }, targetOrigin);
       }
     },
     onDuplicateTab: (tabId) => {
@@ -435,25 +448,32 @@ function setupUIEventListeners() {
   });
 
   // カスタムコンテキストメニューのGoogle検索
-  document.getElementById('searchGoogleItem').addEventListener('click', (e) => {
-    e.stopPropagation(); // イベントのバブリングを停止
-    const selectedTextForSearch = window._selectedTextForSearch || '';
-    if (selectedTextForSearch) {
-      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(selectedTextForSearch)}`;
-      tabManager.createTab(searchUrl, true);
-      document.getElementById('customContextMenu').style.display = 'none';
-      window._selectedTextForSearch = ''; // 使用後にクリア
-    }
-  });
+  const searchGoogleItem = document.getElementById('searchGoogleItem');
+  if (searchGoogleItem) {
+    searchGoogleItem.addEventListener('click', (e) => {
+      e.stopPropagation(); // イベントのバブリングを停止
+      const selectedTextForSearch = window._selectedTextForSearch || '';
+      if (selectedTextForSearch) {
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(selectedTextForSearch)}`;
+        tabManager.createTab(searchUrl, true);
+        const menu = document.getElementById('customContextMenu');
+        if (menu) menu.style.display = 'none';
+        window._selectedTextForSearch = ''; // 使用後にクリア
+      }
+    });
 
-  // カスタムコンテキストメニューをホバー時の色変更
-  document.getElementById('searchGoogleItem').addEventListener('mouseenter', (e) => {
-    e.currentTarget.style.background = 'var(--hover-bg)';
-  });
-  document.getElementById('searchGoogleItem').addEventListener('mouseleave', (e) => {
-    e.currentTarget.style.background = 'transparent';
-  });
+    // カスタムコンテキストメニューをホバー時の色変更
+    searchGoogleItem.addEventListener('mouseenter', (e) => {
+      e.currentTarget.style.background = 'var(--hover-bg)';
+    });
+    searchGoogleItem.addEventListener('mouseleave', (e) => {
+      e.currentTarget.style.background = 'transparent';
+    });
+  }
 }
+
+// Guard flag to prevent double-processing of pendingUrl
+let pendingUrlProcessing = false;
 
 // メッセージハンドラーを設定
 function setupMessageHandlers() {
@@ -461,15 +481,42 @@ function setupMessageHandlers() {
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.pendingUrl) {
       const url = changes.pendingUrl.newValue;
-      if (url) {
+      if (url && !pendingUrlProcessing) {
+        pendingUrlProcessing = true;
         tabManager.createTab(url, true);
         chrome.storage.local.remove('pendingUrl');
+        // Reset flag after a short delay to allow subsequent pendingUrl changes
+        setTimeout(() => { pendingUrlProcessing = false; }, 500);
       }
     }
   });
 
   // history.html、settings.html、およびiframe内からのメッセージを受信
   window.addEventListener('message', async (event) => {
+    const extensionOrigin = chrome.runtime.getURL('').slice(0, -1);
+
+    // 内部ページ（settings.html, history.html）からのみ受け付けるメッセージ: originで検証
+    const internalOnlyTypes = ['closeSettings', 'closeHistory', 'openHistory', 'restoreTab'];
+    if (internalOnlyTypes.includes(event.data.type)) {
+      if (event.origin !== extensionOrigin) {
+        console.warn('[PeekPanel] Rejected internal message from unexpected origin:', event.origin);
+        return;
+      }
+    }
+
+    // 外部iframe（content-script）からのみ受け付けるメッセージ: event.sourceで検証
+    const iframeOnlyTypes = ['showCustomContextMenu', 'hideCustomContextMenu', 'closeContextMenu', 'openNewTab'];
+    if (iframeOnlyTypes.includes(event.data.type)) {
+      const isFromKnownIframe = event.source && tabManager.getAllTabs().some(t => {
+        const iframe = document.getElementById(t.id);
+        return iframe && iframe.contentWindow === event.source;
+      });
+      if (!isFromKnownIframe) {
+        console.warn('[PeekPanel] Rejected iframe message from unknown source:', event.data.type);
+        return;
+      }
+    }
+
     if (event.data.type === 'closeSettings') {
       // 設定ページを閉じる
       const settingsTab = tabManager.getAllTabs().find(t => t.isInternal && t.url.includes('settings.html'));
@@ -513,6 +560,7 @@ function setupMessageHandlers() {
       // カスタムコンテキストメニューを表示
       window._selectedTextForSearch = event.data.text;
       const menu = document.getElementById('customContextMenu');
+      if (!menu) return; // 要素が存在しない場合はスキップ
 
       // メニューテキストを更新（選択テキストを20文字に制限）
       const truncatedText = event.data.text.length > 20
@@ -586,6 +634,73 @@ function setupMessageHandlers() {
 
         // タイトルを更新
         tabManager.updateTabTitle(sourceTab.id, event.data.title);
+      }
+    } else if (event.data.type === 'pageLoaded' || event.data.type === 'historyNavigated') {
+      // ページロードまたはマウスサイドボタンなどでのブラウザネイティブナビゲーションを検出
+      const sourceIframe = event.source;
+      if (!sourceIframe) return;
+
+      const sourceTab = tabManager.getAllTabs().find(t => {
+        const iframe = document.getElementById(t.id);
+        return iframe && iframe.contentWindow === sourceIframe;
+      });
+
+      if (!sourceTab || sourceTab.isInternal) return;
+
+      const newUrl = event.data.url;
+      const oldUrl = sourceTab.url;
+
+      // URL が実際に変更されている場合のみ処理
+      if (oldUrl !== newUrl) {
+        // ブラウザネイティブの履歴移動なので、historyIndex を適切に更新
+        const historyIndex = sourceTab.history.indexOf(newUrl);
+
+        if (historyIndex !== -1) {
+          // 履歴内に存在するURLへの移動
+          sourceTab.historyIndex = historyIndex;
+          sourceTab.url = newUrl;
+
+          tabManager.save();
+
+          // 現在のタブの場合のみ UI を更新
+          if (sourceTab.id === tabManager.currentTabId) {
+            navigationUI.updateNavButtons(sourceTab);
+          }
+
+          if (event.data.title) {
+            tabManager.updateTabTitle(sourceTab.id, event.data.title);
+          }
+          tabUI.updateTabFavicon(sourceTab.id, newUrl);
+        } else {
+          // 履歴にない新しいURLへの移動（通常の処理）
+          tabManager.updateTabUrl(sourceTab.id, newUrl);
+          if (event.data.title) {
+            tabManager.updateTabTitle(sourceTab.id, event.data.title);
+          }
+          tabUI.updateTabFavicon(sourceTab.id, newUrl);
+        }
+      }
+    } else if (event.data.type === 'urlChanged') {
+      // SPA などでの URL 変更のフォールバック処理
+      const sourceIframe = event.source;
+      if (!sourceIframe) return;
+
+      const sourceTab = tabManager.getAllTabs().find(t => {
+        const iframe = document.getElementById(t.id);
+        return iframe && iframe.contentWindow === sourceIframe;
+      });
+
+      if (!sourceTab || sourceTab.isInternal || sourceTab.isNavigatingHistory) return;
+
+      const newUrl = event.data.url;
+      const oldUrl = sourceTab.url;
+
+      if (oldUrl !== newUrl) {
+        tabManager.updateTabUrl(sourceTab.id, newUrl);
+        if (event.data.title) {
+          tabManager.updateTabTitle(sourceTab.id, event.data.title);
+        }
+        tabUI.updateTabFavicon(sourceTab.id, newUrl);
       }
     } else if (event.data.type === 'openNewTab') {
       // iframe内からの新規タブ作成リクエスト（target="_blank"リンクのクリック）
@@ -712,16 +827,19 @@ async function init() {
   // 初期化時に既存のpendingUrlをチェック（サイドパネル起動前に設定された場合に対応）
   const { pendingUrl } = await chrome.storage.local.get(['pendingUrl']);
   if (pendingUrl) {
+    pendingUrlProcessing = true;
     tabManager.createTab(pendingUrl, true);
     // pendingUrlのみ削除し、pendingCleanupText等はai-auto-input.jsのために残す
     chrome.storage.local.remove(['pendingUrl']);
+    setTimeout(() => { pendingUrlProcessing = false; }, 500);
   }
 
   // AI選択プルダウンを初期化
   setupAIDropdownEvents();
 
-  // 自動スリープのチェック（1分ごと）
-  setInterval(() => {
+  // 自動スリープのチェック（1分ごと）- 二重実行防止のため既存をクリア
+  if (autoSleepInterval) clearInterval(autoSleepInterval);
+  autoSleepInterval = setInterval(() => {
     tabManager.checkAndSleepTabs();
   }, TIMINGS.AUTO_SLEEP_CHECK_INTERVAL);
 }

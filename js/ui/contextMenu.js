@@ -1,4 +1,17 @@
 import { GROUP_COLORS } from '../config/constants.js';
+import {
+  ICON_PIN,
+  ICON_VOLUME_X,
+  ICON_VOLUME_2,
+  ICON_COPY,
+  ICON_STAR,
+  ICON_PALETTE,
+  ICON_EXTERNAL_LINK,
+  ICON_X,
+  ICON_PLUS,
+  ICON_TRASH_2,
+  ICON_FOLDER,
+} from '../config/icons.js';
 
 /**
  * コンテキストメニュー管理クラス
@@ -35,31 +48,31 @@ export class ContextMenu {
     const menuItems = [
       {
         label: tab.isPinned ? 'ピン留めを解除' : 'タブをピン留め',
-        icon: '📌',
+        icon: ICON_PIN,
         action: () => this.eventHandlers.onTogglePin?.(tabId),
         hide: tab.isInternal
       },
       {
         label: tab.isMuted ? 'ミュートを解除' : 'タブをミュート',
-        icon: tab.isMuted ? '🔊' : '🔇',
+        icon: tab.isMuted ? ICON_VOLUME_2 : ICON_VOLUME_X,
         action: () => this.eventHandlers.onToggleMute?.(tabId),
         hide: tab.isInternal
       },
       {
         label: 'タブを複製',
-        icon: '📋',
+        icon: ICON_COPY,
         action: () => this.eventHandlers.onDuplicateTab?.(tabId),
         hide: tab.isInternal
       },
       {
         label: 'ブックマークに追加',
-        icon: '⭐',
+        icon: ICON_STAR,
         action: () => this.eventHandlers.onAddToBookmark?.(tabId),
         hide: tab.isInternal
       },
       {
         label: 'グループに追加',
-        icon: '🎨',
+        icon: ICON_PALETTE,
         action: () => {
           // setTimeoutを使って非同期に新しいメニューを開く
           // renderMenuItems()のcloseMenu()が実行された後に開く
@@ -72,14 +85,14 @@ export class ContextMenu {
       { separator: true },
       {
         label: 'Switch to Main Browser',
-        icon: '🔗',
+        icon: ICON_EXTERNAL_LINK,
         action: () => this.eventHandlers.onSendToMainBrowser?.(tabId),
         hide: tab.isInternal
       },
       { separator: true },
       {
         label: 'タブを閉じる',
-        icon: '✕',
+        icon: ICON_X,
         action: () => this.eventHandlers.onCloseTab?.(tabId)
       }
     ];
@@ -119,7 +132,7 @@ export class ContextMenu {
     header.className = 'context-menu-item';
     header.style.fontWeight = 'bold';
     header.style.cursor = 'default';
-    header.textContent = '🎨 グループに追加';
+    header.innerHTML = `<span style="display:flex;align-items:center;gap:6px;">${ICON_PALETTE} グループに追加</span>`;
     menu.appendChild(header);
 
     // セパレーター
@@ -130,7 +143,7 @@ export class ContextMenu {
     // 新しいグループを作成
     const createNewGroup = document.createElement('div');
     createNewGroup.className = 'context-menu-item';
-    createNewGroup.textContent = '➕ 新しいグループ';
+    createNewGroup.innerHTML = `<span style="display:flex;align-items:center;gap:6px;">${ICON_PLUS} 新しいグループ</span>`;
     createNewGroup.onclick = () => {
       console.log('[ContextMenu] Create new group clicked for tabId:', tabId);
       this.closeMenu();
@@ -177,7 +190,7 @@ export class ContextMenu {
 
       const removeFromGroup = document.createElement('div');
       removeFromGroup.className = 'context-menu-item';
-      removeFromGroup.textContent = '🗑️ グループから削除';
+      removeFromGroup.innerHTML = `<span style="display:flex;align-items:center;gap:6px;">${ICON_TRASH_2} グループから削除</span>`;
       removeFromGroup.onclick = () => {
         this.eventHandlers.onRemoveTabFromGroup?.(tabId);
         this.closeMenu();
@@ -283,7 +296,7 @@ export class ContextMenu {
     const menuItems = [
       {
         label: 'グループにタブを追加',
-        icon: '➕',
+        icon: ICON_PLUS,
         action: () => {
           const currentTabId = this.tabManager.currentTabId;
           if (currentTabId) {
@@ -297,7 +310,7 @@ export class ContextMenu {
       },
       {
         label: 'グループを閉じる',
-        icon: '📁',
+        icon: ICON_FOLDER,
         action: () => {
           if (!group.isCollapsed) {
             this.eventHandlers.onToggleGroupCollapse?.(groupId);
@@ -308,7 +321,7 @@ export class ContextMenu {
       { separator: true },
       {
         label: 'グループを解除',
-        icon: '🔓',
+        icon: ICON_X,
         action: () => {
           this.eventHandlers.onUngroupTabs?.(groupId, groupTabs.length);
           this.closeMenu();
@@ -316,7 +329,7 @@ export class ContextMenu {
       },
       {
         label: 'グループを削除',
-        icon: '🗑️',
+        icon: ICON_TRASH_2,
         action: () => {
           this.eventHandlers.onDeleteGroup?.(groupId, groupTabs.length);
           this.closeMenu();
@@ -358,7 +371,7 @@ export class ContextMenu {
         if (item.disabled) {
           menuItem.classList.add('disabled');
         }
-        menuItem.textContent = `${item.icon} ${item.label}`;
+        menuItem.innerHTML = `<span style="display:flex;align-items:center;gap:6px;">${item.icon} ${item.label}</span>`;
         menuItem.onclick = () => {
           if (!item.disabled && item.action) {
             item.action();

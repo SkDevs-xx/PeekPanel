@@ -1,4 +1,5 @@
-// デフォルトプロンプト定義（インライン - constants.jsのモジュールインポート問題を回避）
+// デフォルトプロンプト定義（インライン - Service Workerではimportできないため）
+// NOTE: constants.js の DEFAULT_PROMPTS, AI_URLS と同期が必要
 const DEFAULT_PROMPTS = [
   {
     id: 'default-cleanup',
@@ -52,7 +53,8 @@ chrome.runtime.onInstalled.addListener(async () => {
   chrome.contextMenus.create({
     id: 'openInSubPanel',
     title: 'Open PeekPanel',
-    contexts: ['page'] // リンクタグは除外、ページのみ
+    contexts: ['page'], // リンクタグは除外、ページのみ
+    documentUrlPatterns: ['http://*/*', 'https://*/*'] // 拡張機能内では非表示
   });
 
   // カスタムプロンプトメニューを作成
@@ -75,14 +77,14 @@ async function createPromptMenus() {
   // 全プロンプトを結合
   const allPrompts = [...defaultPrompts, ...enabledCustomPrompts];
 
-  // 各プロンプトのメニューを作成
-  allPrompts.forEach(prompt => {
-    chrome.contextMenus.create({
+  // 各プロンプトのメニューを作成（awaitで完了を保証）
+  for (const prompt of allPrompts) {
+    await chrome.contextMenus.create({
       id: `prompt-${prompt.id}`,
       title: prompt.name,
       contexts: ['selection']
     });
-  });
+  }
 }
 
 // コンテキストメニューがクリックされた時
@@ -139,10 +141,15 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   // ページ右クリック時の処理（「サブパネルで開く」）
   if (info.menuItemId === 'openInSubPanel') {
-    // サイドパネル内のiframeからのクリックの場合は何もしない
-    // frameId !== 0 の場合はiframe内からのクリック
-    if (info.frameId && info.frameId !== 0) {
-      console.log('[PeekPanel] Context menu clicked from iframe (frameId:', info.frameId, '), ignoring');
+    // Peekpanel内のiframeからのクリックの場合は何もしない
+    // frameId !== 0 かつ pageUrl が Peekpanel のメインページの場合
+    const extensionId = chrome.runtime.id;
+    const isPeekPanelIframe = info.frameId && info.frameId !== 0 &&
+      info.pageUrl &&
+      info.pageUrl.startsWith(`chrome-extension://${extensionId}/pages/main.html`);
+
+    if (isPeekPanelIframe) {
+      console.log('[PeekPanel] Context menu clicked from PeekPanel iframe, ignoring');
       return;
     }
 
@@ -171,19 +178,17 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 // カスタムプロンプトが変更されたらメニューを再生成
-chrome.storage.onChanged.addListener((changes, area) => {
+chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area === 'sync' && (changes.customPrompts || changes.disabledDefaultPrompts)) {
-    // メニューを再生成
-    chrome.contextMenus.removeAll(() => {
-      // ページ右クリックメニュー（リンクタグ以外）
-      chrome.contextMenus.create({
-        id: 'openInSubPanel',
-        title: 'Open PeekPanel',
-        contexts: ['page'] // リンクタグは除外、ページのみ
-      });
-
-      // カスタムプロンプトメニューを作成
-      createPromptMenus();
+    // メニューを再生成（async/awaitで順序を保証）
+    await chrome.contextMenus.removeAll();
+    // ページ右クリックメニュー（リンクタグ以外）
+    chrome.contextMenus.create({
+      id: 'openInSubPanel',
+      title: 'Open PeekPanel',
+      contexts: ['page'] // リンクタグは除外、ページのみ
     });
+    // カスタムプロンプトメニューを作成
+    await createPromptMenus();
   }
 });

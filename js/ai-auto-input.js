@@ -148,7 +148,7 @@ const AI_CONFIGS = {
     }
   } catch (error) {
     // 拡張機能コンテキストが無効化されている場合は静かに終了
-    if (!error.message.includes('Extension context invalidated')) {
+    if (!error.message?.includes('Extension context invalidated')) {
       console.error('[PeekPanel] Error in auto-input:', error);
     }
   }

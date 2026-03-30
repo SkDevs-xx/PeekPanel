@@ -1,4 +1,15 @@
 import { getRealFavicon, applyFaviconWithFallback } from '../utils/favicon.js';
+import {
+  ICON_STAR_FILLED,
+  ICON_FOLDER,
+  ICON_FOLDER_OPEN,
+  ICON_CHEVRON_RIGHT,
+  ICON_CHEVRON_DOWN,
+  ICON_EDIT_2,
+  ICON_TRASH_2,
+  ICON_X,
+  ICON_FILE,
+} from '../config/icons.js';
 
 /**
  * ブックマーク管理クラス
@@ -39,6 +50,9 @@ export class BookmarkManager {
 
     // ブックマークとフォルダを読み込み
     await this.loadBookmarks();
+
+    // Set up root drop zone once (not per render to avoid listener accumulation)
+    this.setupRootDropZone();
 
     // イベントリスナーを設定
     this.setupEventListeners();
@@ -136,7 +150,7 @@ export class BookmarkManager {
     }
 
     const bookmark = {
-      id: `bookmark-${Date.now()}`,
+      id: `bookmark-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       url: currentTab.url,
       title: currentTab.title || currentTab.url,
       favicon: getRealFavicon(currentTab.url),
@@ -179,7 +193,7 @@ export class BookmarkManager {
     }
 
     const bookmark = {
-      id: `bookmark-${Date.now()}`,
+      id: `bookmark-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       url: tab.url,
       title: tab.title || tab.url,
       favicon: getRealFavicon(tab.url),
@@ -234,7 +248,7 @@ export class BookmarkManager {
    */
   async createNewFolder() {
     const folder = {
-      id: `folder-${Date.now()}`,
+      id: `folder-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: '新しいフォルダ',
       isCollapsed: false,
       createdAt: Date.now()
@@ -427,9 +441,6 @@ export class BookmarkManager {
       this.bookmarkList.appendChild(item);
     });
 
-    // ルートドロップゾーンを追加
-    this.setupRootDropZone();
-
     // スクロール位置を復元
     this.bookmarkList.scrollTop = scrollTop;
   }
@@ -512,7 +523,7 @@ export class BookmarkManager {
     // 折りたたみアイコン
     const collapseIcon = document.createElement('span');
     collapseIcon.className = 'folder-collapse-icon';
-    collapseIcon.textContent = folder.isCollapsed ? '▶' : '▼';
+    collapseIcon.innerHTML = folder.isCollapsed ? ICON_CHEVRON_RIGHT : ICON_CHEVRON_DOWN;
     collapseIcon.onclick = (e) => {
       e.stopPropagation();
       this.toggleFolderCollapse(folder.id);
@@ -521,7 +532,7 @@ export class BookmarkManager {
     // フォルダアイコン
     const folderIcon = document.createElement('span');
     folderIcon.className = 'folder-icon';
-    folderIcon.textContent = '📁';
+    folderIcon.innerHTML = ICON_FOLDER;
 
     // フォルダ名
     if (this.editingId === folder.id) {
@@ -567,7 +578,7 @@ export class BookmarkManager {
 
       const editBtn = document.createElement('button');
       editBtn.className = 'bookmark-action-btn';
-      editBtn.textContent = '✏️';
+      editBtn.innerHTML = ICON_EDIT_2;
       editBtn.title = '編集';
       editBtn.onclick = (e) => {
         e.stopPropagation();
@@ -576,7 +587,7 @@ export class BookmarkManager {
 
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'bookmark-action-btn';
-      deleteBtn.textContent = '🗑️';
+      deleteBtn.innerHTML = ICON_TRASH_2;
       deleteBtn.title = '削除';
       deleteBtn.onclick = (e) => {
         e.stopPropagation();
@@ -738,7 +749,7 @@ export class BookmarkManager {
 
     const editBtn = document.createElement('button');
     editBtn.className = 'bookmark-action-btn';
-    editBtn.textContent = '✏️';
+    editBtn.innerHTML = ICON_EDIT_2;
     editBtn.title = '編集';
     editBtn.onclick = (e) => {
       e.stopPropagation();
@@ -748,7 +759,7 @@ export class BookmarkManager {
     // フォルダ移動ボタン
     const moveBtn = document.createElement('button');
     moveBtn.className = 'bookmark-action-btn';
-    moveBtn.textContent = '📂';
+    moveBtn.innerHTML = ICON_FOLDER_OPEN;
     moveBtn.title = 'フォルダに移動';
     moveBtn.onclick = (e) => {
       e.stopPropagation();
@@ -757,7 +768,7 @@ export class BookmarkManager {
 
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'bookmark-action-btn';
-    deleteBtn.textContent = '✕';
+    deleteBtn.innerHTML = ICON_X;
     deleteBtn.title = '削除';
     deleteBtn.onclick = (e) => {
       e.stopPropagation();
@@ -807,7 +818,7 @@ export class BookmarkManager {
     if (bookmark.folderId) {
       const rootItem = document.createElement('div');
       rootItem.className = 'move-menu-item';
-      rootItem.textContent = '📄 ルートに移動';
+      rootItem.innerHTML = `${ICON_FILE} ルートに移動`;
       rootItem.onclick = (e) => {
         e.stopPropagation();
         this.moveBookmarkToFolder(bookmarkId, null);
@@ -822,7 +833,7 @@ export class BookmarkManager {
       if (folder.id !== bookmark.folderId) {
         const folderItem = document.createElement('div');
         folderItem.className = 'move-menu-item';
-        folderItem.textContent = `📁 ${folder.name}`;
+        folderItem.innerHTML = `${ICON_FOLDER} ${folder.name}`;
         folderItem.onclick = (e) => {
           e.stopPropagation();
           this.moveBookmarkToFolder(bookmarkId, folder.id);

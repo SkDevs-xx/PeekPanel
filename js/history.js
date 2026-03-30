@@ -1,7 +1,10 @@
-// 共通モジュールからインポート
+// 共通モジュールから���ンポート
 import { applyFaviconWithFallback } from './utils/favicon.js';
 import { getTimeAgo } from './utils/timeHelper.js';
 import { showToast, hideModal } from './utils/uiHelper.js';
+
+// Extension origin for secure postMessage
+const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1) || '*';
 
 // 履歴を表示
 async function displayHistory() {
@@ -73,14 +76,14 @@ async function restoreTab(index) {
     type: 'restoreTab',
     tabData: closedTab,
     index: index
-  }, '*');
+  }, EXTENSION_ORIGIN);
 }
 
 // 閉じるボタン
 document.getElementById('closeButton').addEventListener('click', () => {
   window.parent.postMessage({
     type: 'closeHistory'
-  }, '*');
+  }, EXTENSION_ORIGIN);
 });
 
 // 履歴クリア確認モーダルを閉じる

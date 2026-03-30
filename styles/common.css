@@ -1,4 +1,4 @@
-/* 共通CSS - 設定ページと履歴ページで使用 */
+/* PeekPanel - Shared Styles */
 
 * {
   margin: 0;
@@ -9,67 +9,89 @@
 /* CSS変数でテーマカラーを定義 */
 :root {
   /* ダークモード（デフォルト） */
-  --bg-primary: #202124;
-  --bg-secondary: #292a2d;
-  --bg-tertiary: #3c4043;
-  --border-color: #3c4043;
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa0a6;
-  --hover-bg: #292a2d;
-  --accent-color: #8ab4f8;
+  --bg-primary: #1a1b1e;
+  --bg-secondary: #232428;
+  --bg-tertiary: #2c2d31;
+  --border-color: #343538;
+  --text-primary: #e4e5e7;
+  --text-secondary: #8b8d93;
+  --hover-bg: #2a2b2f;
+  --accent-color: #7aa2f7;
+  --danger-color: #c94a4a;
+  --success-bg: #1e4620;
+  --success-color: #81c995;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 }
 
 /* ライトモード（システム設定） */
 @media (prefers-color-scheme: light) {
   :root {
     --bg-primary: #ffffff;
-    --bg-secondary: #f1f3f4;
-    --bg-tertiary: #e8eaed;
-    --border-color: #dadce0;
-    --text-primary: #202124;
-    --text-secondary: #5f6368;
-    --hover-bg: #f1f3f4;
-    --accent-color: #1a73e8;
+    --bg-secondary: #f5f5f7;
+    --bg-tertiary: #ebebed;
+    --border-color: #d8d8db;
+    --text-primary: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --hover-bg: #f0f0f2;
+    --accent-color: #4a7cde;
   }
 }
 
 /* ライトモード（ユーザー選択） */
 :root[data-theme="light"] {
   --bg-primary: #ffffff;
-  --bg-secondary: #f1f3f4;
-  --bg-tertiary: #e8eaed;
-  --border-color: #dadce0;
-  --text-primary: #202124;
-  --text-secondary: #5f6368;
-  --hover-bg: #f1f3f4;
-  --accent-color: #1a73e8;
+  --bg-secondary: #f5f5f7;
+  --bg-tertiary: #ebebed;
+  --border-color: #d8d8db;
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --hover-bg: #f0f0f2;
+  --accent-color: #4a7cde;
 }
 
 /* ダークモード（ユーザー選択） */
 :root[data-theme="dark"] {
-  --bg-primary: #202124;
-  --bg-secondary: #292a2d;
-  --bg-tertiary: #3c4043;
-  --border-color: #3c4043;
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa0a6;
-  --hover-bg: #292a2d;
-  --accent-color: #8ab4f8;
+  --bg-primary: #1a1b1e;
+  --bg-secondary: #232428;
+  --bg-tertiary: #2c2d31;
+  --border-color: #343538;
+  --text-primary: #e4e5e7;
+  --text-secondary: #8b8d93;
+  --hover-bg: #2a2b2f;
+  --accent-color: #7aa2f7;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   padding: 20px;
   max-width: 800px;
   margin: 0 auto;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1 {
-  font-size: 24px;
+  font-size: 20px;
+  font-weight: 600;
   margin-bottom: 20px;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+}
+
+/* SVGアイコン共通スタイル */
+svg {
+  flex-shrink: 0;
+}
+
+button svg, .nav-button svg, .utility-button svg {
+  display: block;
 }
 
 /* ヘッダー（タイトルとボタン） */
@@ -86,41 +108,60 @@ h1 {
 
 /* ボタン共通スタイル */
 .button {
-  padding: 8px 16px;
+  padding: 7px 14px;
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 14px;
-  transition: opacity 0.2s;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .button:hover {
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 .button:active {
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 /* 通常ボタン */
 .button-normal {
-  background: var(--bg-secondary);
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.button-normal:hover {
   color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: var(--hover-bg);
 }
 
 /* プライマリボタン */
 .button-primary {
   background: var(--accent-color);
   color: white;
-  border: none;
+  border: 1px solid transparent;
   font-weight: 600;
+}
+
+.button-primary:hover {
+  opacity: 0.9;
 }
 
 /* 危険ボタン */
 .button-danger {
-  background: #c94a4a;
-  border: 1px solid #a83838;
+  background: var(--danger-color);
+  border: 1px solid transparent;
   color: white;
+}
+
+.button-danger:hover {
+  opacity: 0.9;
 }
 
 /* ボタングループ */
@@ -141,30 +182,31 @@ h1 {
 .setting-section {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 12px;
 }
 
 .setting-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   display: block;
 }
 
 .setting-description {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  line-height: 1.5;
 }
 
 /* ラジオボタングループ */
 .radio-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px;
 }
 
 .radio-option {
@@ -172,9 +214,9 @@ h1 {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-  transition: background 0.2s;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  transition: background 0.15s;
 }
 
 .radio-option:hover {
@@ -183,14 +225,25 @@ h1 {
 
 .radio-option input[type="radio"] {
   cursor: pointer;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+}
+
+.radio-option input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
 }
 
 .radio-option label {
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* ステータスメッセージ */
@@ -210,9 +263,9 @@ h1 {
 }
 
 .status-message.success {
-  background: #1e4620;
-  color: #81c995;
-  border: 1px solid #81c995;
+  background: var(--success-bg);
+  color: var(--success-color);
+  border: 1px solid var(--success-color);
 }
 
 .status-message.show {
@@ -256,15 +309,14 @@ h1 {
   margin-bottom: 8px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .history-item:hover {
   background: var(--hover-bg);
   border-color: var(--text-secondary);
-  transform: translateX(2px);
 }
 
 .history-item:last-child {
@@ -311,34 +363,42 @@ h1 {
 .prompts-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   margin-top: 12px;
 }
 
 .prompt-card {
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  transition: border-color 0.15s;
+}
+
+.prompt-card:hover {
+  border-color: var(--text-secondary);
 }
 
 .prompt-card.disabled {
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 .prompt-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .prompt-icon {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  color: var(--accent-color);
+  opacity: 0.7;
 }
 
 .prompt-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   flex: 1;
@@ -347,40 +407,51 @@ h1 {
 .default-badge {
   background: var(--accent-color);
   color: white;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .prompt-text {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   white-space: pre-wrap;
-  font-family: monospace;
-  background: var(--bg-secondary);
-  padding: 8px;
-  border-radius: 4px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  background: var(--bg-tertiary);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+  border: 1px solid transparent;
 }
 
 .prompt-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .toggle-label {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
   flex: 1;
+  cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+  accent-color: var(--accent-color);
 }
 
 .button-small {
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: var(--radius-sm);
 }
 
 /* モーダル */
@@ -400,7 +471,7 @@ h1 {
 .modal-content {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   width: 90%;
   max-width: 600px;
   max-height: 80vh;

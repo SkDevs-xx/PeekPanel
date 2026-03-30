@@ -211,6 +211,14 @@ export class TabGroupManager extends EventEmitter {
    */
   closeGroupTabs(groupId) {
     const tabs = this.tabManager.getTabsByGroupId(groupId);
+    const normalTabsInGroup = tabs.filter(t => !t.isInternal);
+    const allNormalTabs = this.tabManager.tabs.filter(t => !t.isInternal);
+
+    // If closing this group would remove all normal tabs, create a new blank tab first
+    if (normalTabsInGroup.length >= allNormalTabs.length) {
+      this.tabManager.createTab('about:blank', true);
+    }
+
     tabs.forEach(tab => {
       this.tabManager.closeTab(tab.id);
     });
