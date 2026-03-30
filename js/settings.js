@@ -101,13 +101,15 @@ document.querySelectorAll('input[name="theme"]').forEach(radio => {
 });
 
 // Extension origin for secure postMessage
-const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1) || '*';
+const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1);
 
 // 閉じるボタンのイベントリスナー
 document.getElementById('closeButton').addEventListener('click', () => {
-  window.parent.postMessage({
-    type: 'closeSettings'
-  }, EXTENSION_ORIGIN);
+  if (EXTENSION_ORIGIN) {
+    window.parent.postMessage({
+      type: 'closeSettings'
+    }, EXTENSION_ORIGIN);
+  }
 });
 
 // 履歴表示機能
@@ -178,11 +180,13 @@ async function restoreTab(index) {
   const closedTab = closedTabsHistory[index];
 
   // 親ウィンドウ（panel.js）にメッセージを送信
-  window.parent.postMessage({
-    type: 'restoreTab',
-    tabData: closedTab,
-    index: index
-  }, EXTENSION_ORIGIN);
+  if (EXTENSION_ORIGIN) {
+    window.parent.postMessage({
+      type: 'restoreTab',
+      tabData: closedTab,
+      index: index
+    }, EXTENSION_ORIGIN);
+  }
 }
 
 // 履歴クリア確認モーダルを閉じる

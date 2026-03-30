@@ -29,29 +29,95 @@ let errorManager;
 let iframeManager;
 let bookmarkManager;
 let autoSleepInterval = null;
+let previousActiveIframeId = null;
 
-// ヘッダー除去設定
-async function setupHeaderRemoval() {
-  await chrome.declarativeNetRequest.updateSessionRules({
-    removeRuleIds: [1],
-    addRules: [{
-      id: 1,
-      priority: 1,
-      action: {
-        type: "modifyHeaders",
-        responseHeaders: [
-          { header: "x-frame-options", operation: "remove" },
-          { header: "content-security-policy", operation: "remove" },
-          { header: "content-security-policy-report-only", operation: "remove" },
-          { header: "permissions-policy", operation: "remove" }
-        ]
-      },
-      condition: {
-        urlFilter: "*",
-        resourceTypes: ["sub_frame"]
-      }
-    }]
-  });
+// Dynamic CSP removal — only for domains currently open in PeekPanel tabs
+const activeHeaderRules = new Map(); // domain -> ruleId
+let nextSessionRuleId = 100; // Start high to avoid conflict with static rules
+
+function getDomain(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+async function addHeaderRuleForDomain(domain) {
+  if (!domain || activeHeaderRules.has(domain)) return;
+  const ruleId = nextSessionRuleId++;
+  activeHeaderRules.set(domain, ruleId);
+  try {
+    await chrome.declarativeNetRequest.updateSessionRules({
+      addRules: [{
+        id: ruleId,
+        priority: 1,
+        action: {
+          type: "modifyHeaders",
+          responseHeaders: [
+            { header: "x-frame-options", operation: "remove" },
+            { header: "content-security-policy", operation: "remove" },
+            { header: "content-security-policy-report-only", operation: "remove" },
+            { header: "permissions-policy", operation: "remove" }
+          ]
+        },
+        condition: {
+          requestDomains: [domain],
+          resourceTypes: ["sub_frame"]
+        }
+      }]
+    });
+  } catch (e) {
+    console.error('[PeekPanel] Failed to add header rule for', domain, e);
+    activeHeaderRules.delete(domain);
+  }
+}
+
+async function removeHeaderRuleForDomain(domain) {
+  if (!domain || !activeHeaderRules.has(domain)) return;
+  const ruleId = activeHeaderRules.get(domain);
+  activeHeaderRules.delete(domain);
+  // Only remove if no other tab uses this domain
+  const stillUsed = tabManager?.getAllTabs().some(t => getDomain(t.url) === domain);
+  if (stillUsed) {
+    activeHeaderRules.set(domain, ruleId); // Restore
+    return;
+  }
+  try {
+    await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: [ruleId] });
+  } catch (e) {
+    console.error('[PeekPanel] Failed to remove header rule for', domain, e);
+  }
+}
+
+async function syncHeaderRules() {
+  // Clear all existing session rules, then add rules for current tab domains
+  const existingRules = await chrome.declarativeNetRequest.getSessionRules();
+  const existingIds = existingRules.map(r => r.id).filter(id => id >= 100);
+  if (existingIds.length > 0) {
+    await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: existingIds });
+  }
+  activeHeaderRules.clear();
+
+  if (!tabManager) return;
+  const domains = new Set();
+  for (const tab of tabManager.getAllTabs()) {
+    const domain = getDomain(tab.url);
+    if (domain) domains.add(domain);
+  }
+  for (const domain of domains) {
+    await addHeaderRuleForDomain(domain);
+  }
+}
+
+function onTabUrlChanged(url) {
+  const domain = getDomain(url);
+  if (domain) addHeaderRuleForDomain(domain);
+}
+
+function onTabRemoved(url) {
+  const domain = getDomain(url);
+  if (domain) removeHeaderRuleForDomain(domain);
 }
 
 // URLを遷移
@@ -63,9 +129,18 @@ function navigateToUrl(url) {
     // URLの正規化
     url = normalizeUrl(url);
 
+    try {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        console.warn('[PeekPanel] Blocked navigation to unsafe protocol:', parsed.protocol);
+        return;
+      }
+    } catch { /* normalizeUrl already handles invalid URLs */ }
+
     const iframe = document.getElementById(tabManager.currentTabId);
     if (!iframe) return;
 
+    onTabUrlChanged(url); // Add CSP rule for new domain before navigation
     iframe.src = url;
 
     // TabManagerを使って履歴を更新
@@ -107,8 +182,7 @@ async function sendTabToMainBrowser(tabId) {
 
 // マネージャーを初期化
 async function initManagers() {
-  // ヘッダー削除設定
-  await setupHeaderRemoval();
+  // Note: header rules synced after tabManager init (syncHeaderRules)
 
   // ストレージマネージャーを作成
   const storage = new StorageManager();
@@ -280,14 +354,18 @@ function setupTabManagerEvents() {
   // TabManagerのイベントを購読してiframeを作成
   tabManager.on('tabCreated', ({ tabId, tabData, isActive, isInternal }) => {
     iframeManager.createIframeForTab(tabId, tabData.url, isActive, isInternal);
+    onTabUrlChanged(tabData.url); // Add CSP rule for new tab's domain
   });
 
   // タブ切り替え時にiframeを表示/非表示
   tabManager.on('tabSwitched', ({ tabId }) => {
-    // すべてのiframeを非表示
-    document.querySelectorAll('#iframeContainer iframe').forEach(iframe => {
-      iframe.style.display = 'none';
-    });
+    // 前のアクティブiframeのみを非表示（全件走査を避けてパフォーマンス改善）
+    if (previousActiveIframeId && previousActiveIframeId !== tabId) {
+      const prevIframe = document.getElementById(previousActiveIframeId);
+      if (prevIframe) {
+        prevIframe.style.display = 'none';
+      }
+    }
 
     // アクティブなiframeを表示
     const iframe = document.getElementById(tabId);
@@ -301,6 +379,9 @@ function setupTabManagerEvents() {
         tab.needsLoad = false;
       }
     }
+
+    // 次回の切り替えのために現在のアクティブiframe IDを記録
+    previousActiveIframeId = tabId;
 
     // エラーオーバーレイを表示/非表示
     const iframeContainer = document.getElementById('iframeContainer');
@@ -320,6 +401,8 @@ function setupTabManagerEvents() {
 
   // タブ削除時にiframeを削除
   tabManager.on('tabClosed', ({ tabId }) => {
+    const tab = tabManager.getTab(tabId);
+    if (tab) onTabRemoved(tab.url); // Remove CSP rule if domain no longer needed
     const iframe = document.getElementById(tabId);
     if (iframe && iframe.parentNode) {
       // メモリリーク対策: iframeのリソースを解放
@@ -472,8 +555,8 @@ function setupUIEventListeners() {
   }
 }
 
-// Guard flag to prevent double-processing of pendingUrl
-let pendingUrlProcessing = false;
+// Track last processed pendingUrl to prevent double-processing
+let lastProcessedPendingUrl = null;
 
 // メッセージハンドラーを設定
 function setupMessageHandlers() {
@@ -481,12 +564,10 @@ function setupMessageHandlers() {
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.pendingUrl) {
       const url = changes.pendingUrl.newValue;
-      if (url && !pendingUrlProcessing) {
-        pendingUrlProcessing = true;
+      if (url && url !== lastProcessedPendingUrl) {
+        lastProcessedPendingUrl = url;
         tabManager.createTab(url, true);
         chrome.storage.local.remove('pendingUrl');
-        // Reset flag after a short delay to allow subsequent pendingUrl changes
-        setTimeout(() => { pendingUrlProcessing = false; }, 500);
       }
     }
   });
@@ -697,6 +778,7 @@ function setupMessageHandlers() {
 
       if (oldUrl !== newUrl) {
         tabManager.updateTabUrl(sourceTab.id, newUrl);
+        onTabUrlChanged(newUrl); // Add CSP rule for new domain
         if (event.data.title) {
           tabManager.updateTabTitle(sourceTab.id, event.data.title);
         }
@@ -826,13 +908,15 @@ async function init() {
 
   // 初期化時に既存のpendingUrlをチェック（サイドパネル起動前に設定された場合に対応）
   const { pendingUrl } = await chrome.storage.local.get(['pendingUrl']);
-  if (pendingUrl) {
-    pendingUrlProcessing = true;
+  if (pendingUrl && pendingUrl !== lastProcessedPendingUrl) {
+    lastProcessedPendingUrl = pendingUrl;
     tabManager.createTab(pendingUrl, true);
     // pendingUrlのみ削除し、pendingCleanupText等はai-auto-input.jsのために残す
     chrome.storage.local.remove(['pendingUrl']);
-    setTimeout(() => { pendingUrlProcessing = false; }, 500);
   }
+
+  // Sync CSP header rules for currently open tab domains
+  await syncHeaderRules();
 
   // AI選択プルダウンを初期化
   setupAIDropdownEvents();

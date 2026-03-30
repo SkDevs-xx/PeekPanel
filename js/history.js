@@ -4,7 +4,7 @@ import { getTimeAgo } from './utils/timeHelper.js';
 import { showToast, hideModal } from './utils/uiHelper.js';
 
 // Extension origin for secure postMessage
-const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1) || '*';
+const EXTENSION_ORIGIN = chrome.runtime?.getURL('').slice(0, -1);
 
 // 履歴を表示
 async function displayHistory() {
@@ -72,18 +72,22 @@ async function restoreTab(index) {
   const closedTab = closedTabsHistory[index];
 
   // 親ウィンドウ（panel.js）にメッセージを送信
-  window.parent.postMessage({
-    type: 'restoreTab',
-    tabData: closedTab,
-    index: index
-  }, EXTENSION_ORIGIN);
+  if (EXTENSION_ORIGIN) {
+    window.parent.postMessage({
+      type: 'restoreTab',
+      tabData: closedTab,
+      index: index
+    }, EXTENSION_ORIGIN);
+  }
 }
 
 // 閉じるボタン
 document.getElementById('closeButton').addEventListener('click', () => {
-  window.parent.postMessage({
-    type: 'closeHistory'
-  }, EXTENSION_ORIGIN);
+  if (EXTENSION_ORIGIN) {
+    window.parent.postMessage({
+      type: 'closeHistory'
+    }, EXTENSION_ORIGIN);
+  }
 });
 
 // 履歴クリア確認モーダルを閉じる

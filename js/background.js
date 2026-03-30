@@ -1,43 +1,4 @@
-// デフォルトプロンプト定義（インライン - Service Workerではimportできないため）
-// NOTE: constants.js の DEFAULT_PROMPTS, AI_URLS と同期が必要
-const DEFAULT_PROMPTS = [
-  {
-    id: 'default-cleanup',
-    name: '清書する',
-    prompt: '次の文章を読みやすく清書してください:\n\n{text}',
-    enabled: true,
-    isDefault: true
-  },
-  {
-    id: 'default-summary',
-    name: '要約する',
-    prompt: '次の文章を簡潔に要約してください:\n\n{text}',
-    enabled: true,
-    isDefault: true
-  },
-  {
-    id: 'default-translate',
-    name: '英語に翻訳',
-    prompt: '次の文章を英語に翻訳してください:\n\n{text}',
-    enabled: true,
-    isDefault: true
-  },
-  {
-    id: 'default-professional',
-    name: 'ビジネス文書化',
-    prompt: '次の文章をビジネス文書として整形してください:\n\n{text}',
-    enabled: true,
-    isDefault: true
-  }
-];
-
-// AI URLマップ
-const AI_URLS = {
-  'claude': 'https://claude.ai',
-  'chatgpt': 'https://chatgpt.com',
-  'gemini': 'https://gemini.google.com/app',
-  'grok': 'https://grok.com/'
-};
+import { DEFAULT_PROMPTS, AI_URLS } from './config/constants.js';
 
 // 拡張機能アイコンクリックでサイドパネルを開く
 chrome.action.onClicked.addListener(async (tab) => {

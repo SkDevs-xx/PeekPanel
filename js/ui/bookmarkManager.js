@@ -833,7 +833,8 @@ export class BookmarkManager {
       if (folder.id !== bookmark.folderId) {
         const folderItem = document.createElement('div');
         folderItem.className = 'move-menu-item';
-        folderItem.innerHTML = `${ICON_FOLDER} ${folder.name}`;
+        folderItem.innerHTML = ICON_FOLDER;
+        folderItem.appendChild(document.createTextNode(' ' + folder.name));
         folderItem.onclick = (e) => {
           e.stopPropagation();
           this.moveBookmarkToFolder(bookmarkId, folder.id);

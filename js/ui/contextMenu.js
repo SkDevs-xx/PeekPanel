@@ -371,7 +371,11 @@ export class ContextMenu {
         if (item.disabled) {
           menuItem.classList.add('disabled');
         }
-        menuItem.innerHTML = `<span style="display:flex;align-items:center;gap:6px;">${item.icon} ${item.label}</span>`;
+        const span = document.createElement('span');
+        span.style.cssText = 'display:flex;align-items:center;gap:6px;';
+        span.innerHTML = item.icon; // SVG icon (trusted)
+        span.appendChild(document.createTextNode(' ' + item.label));
+        menuItem.appendChild(span);
         menuItem.onclick = () => {
           if (!item.disabled && item.action) {
             item.action();
