@@ -31,6 +31,28 @@ let bookmarkManager;
 let autoSleepInterval = null;
 let previousActiveIframeId = null;
 
+// O(1) tab lookup by contentWindow — avoids getAllTabs().find() on every message
+const iframeWindowToTabId = new Map();
+
+function registerIframeWindow(tabId) {
+  const iframe = document.getElementById(tabId);
+  if (iframe?.contentWindow) {
+    iframeWindowToTabId.set(iframe.contentWindow, tabId);
+  }
+}
+
+function unregisterIframeWindow(tabId) {
+  const iframe = document.getElementById(tabId);
+  if (iframe?.contentWindow) {
+    iframeWindowToTabId.delete(iframe.contentWindow);
+  }
+}
+
+function findTabByWindow(sourceWindow) {
+  const tabId = iframeWindowToTabId.get(sourceWindow);
+  return tabId ? tabManager.getTab(tabId) : null;
+}
+
 // Dynamic CSP removal — only for domains currently open in PeekPanel tabs
 const activeHeaderRules = new Map(); // domain -> ruleId
 let nextSessionRuleId = 100; // Start high to avoid conflict with static rules
@@ -353,8 +375,22 @@ async function initManagers() {
 function setupTabManagerEvents() {
   // TabManagerのイベントを購読してiframeを作成
   tabManager.on('tabCreated', ({ tabId, tabData, isActive, isInternal }) => {
-    iframeManager.createIframeForTab(tabId, tabData.url, isActive, isInternal);
+    const iframe = iframeManager.createIframeForTab(tabId, tabData.url, isActive, isInternal);
     onTabUrlChanged(tabData.url); // Add CSP rule for new tab's domain
+
+    // After each navigation (including redirects), ensure CSP rule covers the final URL
+    // Also register contentWindow for O(1) tab lookup
+    iframe.addEventListener('load', () => {
+      registerIframeWindow(tabId);
+      try {
+        const currentUrl = iframe.contentWindow?.location.href;
+        if (currentUrl && currentUrl !== 'about:blank') {
+          onTabUrlChanged(currentUrl);
+        }
+      } catch (e) {
+        // Cross-origin: cannot access contentWindow.location; tab.url is used instead
+      }
+    });
   });
 
   // タブ切り替え時にiframeを表示/非表示
@@ -401,6 +437,7 @@ function setupTabManagerEvents() {
 
   // タブ削除時にiframeを削除
   tabManager.on('tabClosed', ({ tabId }) => {
+    unregisterIframeWindow(tabId); // Remove from O(1) lookup map
     const tab = tabManager.getTab(tabId);
     if (tab) onTabRemoved(tab.url); // Remove CSP rule if domain no longer needed
     const iframe = document.getElementById(tabId);
@@ -671,11 +708,8 @@ function setupMessageHandlers() {
         const sourceIframe = event.source;
         if (!sourceIframe) return;
 
-        // 送信元iframeに対応するタブを見つける
-        const sourceTab = tabManager.getAllTabs().find(t => {
-          const iframe = document.getElementById(t.id);
-          return iframe && iframe.contentWindow === sourceIframe;
-        });
+        // O(1) lookup by contentWindow
+        const sourceTab = findTabByWindow(sourceIframe);
 
         if (!sourceTab || sourceTab.isInternal) return;
 
@@ -721,10 +755,7 @@ function setupMessageHandlers() {
       const sourceIframe = event.source;
       if (!sourceIframe) return;
 
-      const sourceTab = tabManager.getAllTabs().find(t => {
-        const iframe = document.getElementById(t.id);
-        return iframe && iframe.contentWindow === sourceIframe;
-      });
+      const sourceTab = findTabByWindow(sourceIframe);
 
       if (!sourceTab || sourceTab.isInternal) return;
 
@@ -766,10 +797,7 @@ function setupMessageHandlers() {
       const sourceIframe = event.source;
       if (!sourceIframe) return;
 
-      const sourceTab = tabManager.getAllTabs().find(t => {
-        const iframe = document.getElementById(t.id);
-        return iframe && iframe.contentWindow === sourceIframe;
-      });
+      const sourceTab = findTabByWindow(sourceIframe);
 
       if (!sourceTab || sourceTab.isInternal || sourceTab.isNavigatingHistory) return;
 

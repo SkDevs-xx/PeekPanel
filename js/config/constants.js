@@ -1,18 +1,15 @@
 // 初期AI設定
 export const DEFAULT_AIS = [
-  { id: 'gemini', url: 'https://gemini.google.com/app' },
-  { id: 'claude', url: 'https://claude.ai/new' },
-  { id: 'chatgpt', url: 'https://chatgpt.com' },
-  { id: 'grok', url: 'https://grok.com/' }
+  { id: 'gemini', url: 'https://gemini.google.com/app', baseUrl: 'https://gemini.google.com/app' },
+  { id: 'claude', url: 'https://claude.ai/new', baseUrl: 'https://claude.ai' },
+  { id: 'chatgpt', url: 'https://chatgpt.com', baseUrl: 'https://chatgpt.com' },
+  { id: 'grok', url: 'https://grok.com/', baseUrl: 'https://grok.com/' }
 ];
 
-// AI URLマップ（バックグラウンドスクリプト用）
-export const AI_URLS = {
-  'claude': 'https://claude.ai',
-  'chatgpt': 'https://chatgpt.com',
-  'gemini': 'https://gemini.google.com/app',
-  'grok': 'https://grok.com/'
-};
+// AI URLマップ（バックグラウンドスクリプト用）- DEFAULT_AISから自動生成
+export const AI_URLS = Object.fromEntries(
+  DEFAULT_AIS.map(ai => [ai.id, ai.baseUrl])
+);
 
 // デフォルトプロンプト定義
 export const DEFAULT_PROMPTS = [

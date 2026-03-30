@@ -201,6 +201,7 @@
     // パフォーマンス最適化: 1秒→5秒間隔に変更
     let lastTitle = '';
     titleCheckInterval = setInterval(() => {
+      if (document.hidden) return;
       if (document.title && document.title !== lastTitle) {
         lastTitle = document.title;
         sendTitle();
@@ -282,6 +283,7 @@
     // URLが変更された時のバックアップ検出（SPAなど）
     let lastUrl = window.location.href;
     urlCheckInterval = setInterval(() => {
+      if (document.hidden || !document.hasFocus()) return;
       const currentUrl = window.location.href;
       if (currentUrl !== lastUrl) {
         lastUrl = currentUrl;
@@ -292,7 +294,7 @@
           title: document.title
         });
       }
-    }, 1000);
+    }, 3000);
   } catch (error) {
     // Extension context invalidatedエラーを無視
     // 拡張機能のリロード後に古いコンテンツスクリプトが実行される場合に発生

@@ -28,7 +28,7 @@ export class IframeManager {
     // Permissions Policy: カメラ・マイク・位置情報は不要なため除外
     iframe.allow = 'fullscreen *; clipboard-write; encrypted-media; autoplay; picture-in-picture';
 
-    // タイムアウト検知（60秒）- 内部ページは除外
+    // タイムアウト検知（20秒）- 内部ページは除外
     // 既存のタイムアウトをクリア（リロード・タブ復帰時のリーク防止）
     if (this._loadTimeouts.has(tabId)) {
       clearTimeout(this._loadTimeouts.get(tabId));
@@ -39,7 +39,7 @@ export class IframeManager {
       if (tab && !tab.isInternal && !tab.isLoaded && !tab.hasError && iframe.src && iframe.src !== 'about:blank') {
         this.errorManager.handleIframeError(tabId, 'timeout');
       }
-    }, 60000);
+    }, 20000);
     this._loadTimeouts.set(tabId, loadTimeout);
 
     // エラー検知 - 内部ページは除外

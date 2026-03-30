@@ -34,13 +34,7 @@ export class ModalManager {
           </div>
           <div class="group-form-field">
             <label>グループの色</label>
-            <div class="group-color-picker">
-              ${GROUP_COLORS.map(color => `
-                <div class="group-color-option" data-color-id="${color.id}" style="background: ${color.color};" title="${color.label}">
-                  <span class="checkmark">✓</span>
-                </div>
-              `).join('')}
-            </div>
+            <div class="group-color-picker"></div>
           </div>
         </div>
         <div class="group-modal-footer">
@@ -49,6 +43,21 @@ export class ModalManager {
         </div>
       </div>
     `;
+
+    // Build color picker using DOM API to avoid injecting data values into innerHTML
+    const colorPicker = modal.querySelector('.group-color-picker');
+    GROUP_COLORS.forEach(color => {
+      const option = document.createElement('div');
+      option.className = 'group-color-option';
+      option.dataset.colorId = color.id;
+      option.style.background = color.color;
+      option.title = color.label;
+      const checkmark = document.createElement('span');
+      checkmark.className = 'checkmark';
+      checkmark.textContent = '✓';
+      option.appendChild(checkmark);
+      colorPicker.appendChild(option);
+    });
 
     let selectedColorId = 'grey';
 
