@@ -1,0 +1,67 @@
+[
+    {
+        "id": 1000,
+        "priority": 200,
+        "action": { "type": "block" },
+        "condition": {
+            "requestDomains": [
+                "doubleclick.net",
+                "googlesyndication.com",
+                "googleadservices.com",
+                "google-analytics.com",
+                "googletagmanager.com",
+                "adnxs.com",
+                "adsrvr.org",
+                "amazon-adsystem.com",
+                "facebook.com",
+                "connect.facebook.net",
+                "criteo.com",
+                "criteo.net",
+                "outbrain.com",
+                "taboola.com",
+                "moatads.com",
+                "pubmatic.com",
+                "rubiconproject.com",
+                "casalemedia.com",
+                "openx.net",
+                "turn.com",
+                "bidswitch.net",
+                "mathtag.com",
+                "serving-sys.com",
+                "smartadserver.com",
+                "adform.net",
+                "adsymptotic.com",
+                "contextweb.com",
+                "yieldmanager.com",
+                "admob.com",
+                "scorecardresearch.com"
+            ],
+            "resourceTypes": [
+                "script",
+                "image",
+                "sub_frame",
+                "xmlhttprequest",
+                "other"
+            ]
+        }
+    },
+    {
+        "id": 1001,
+        "priority": 200,
+        "action": { "type": "block" },
+        "condition": {
+            "urlFilter": "||ads.*",
+            "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest"]
+        }
+    },
+    {
+        "id": 1002,
+        "priority": 200,
+        "action": { "type": "block" },
+        "condition": {
+            "urlFilter": "*pagead*",
+            "requestDomains": ["googlesyndication.com", "doubleclick.net"],
+            "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest"]
+        }
+    }
+]

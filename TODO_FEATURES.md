@@ -25,11 +25,9 @@
 
 ## Features
 
-- [ ] **簡易アドブロック**: declarativeNetRequest ルールで主要な広告ドメインをブロック
-- [ ] **タブ検索**: タブが増えた時にタイトル/URLで検索できる機能
-- [ ] **キーボードショートカット**: Ctrl+T (新規タブ), Ctrl+W (タブ閉じ), Ctrl+Tab (タブ切替) 等
+- [x] ~~**簡易アドブロック**: declarativeNetRequest ルールで主要な広告ドメインをブロック~~
+- [x] ~~**browser-core.js の分割**: headerRuleManager, messageHandler, aiDropdown に分離 (960行→574行)~~
 - [ ] **i18n 対応**: Chrome i18n API (`chrome.i18n`) で多言語化
-- [ ] **タブのエクスポート/インポート**: 開いているタブ一覧をJSON/テキストで保存・復元
 - [ ] **ピクチャーインピクチャー連携**: 動画サイトのPiPモードとの連携
 
 ## Testing

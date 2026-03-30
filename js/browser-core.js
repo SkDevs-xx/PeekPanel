@@ -1,4 +1,4 @@
-// 新しいモジュールをインポート
+// Module imports
 import { DEFAULT_AIS, TIMINGS } from './config/constants.js';
 import { StorageManager } from './storage/storageManager.js';
 import { TabManager } from './tabs/tabManager.js';
@@ -14,6 +14,10 @@ import { ErrorManager } from './ui/errorManager.js';
 import { IframeManager } from './ui/iframeManager.js';
 import { BookmarkManager } from './ui/bookmarkManager.js';
 import { normalizeUrl } from './utils/urlHelper.js';
+// Extracted modules
+import { syncHeaderRules, onTabUrlChanged, onTabRemoved } from './core/headerRuleManager.js';
+import { setupMessageHandlers } from './core/messageHandler.js';
+import { setupAIDropdown } from './core/aiDropdown.js';
 
 // グローバルインスタンス（init関数内で初期化）
 let tabManager;
@@ -51,95 +55,6 @@ function unregisterIframeWindow(tabId) {
 function findTabByWindow(sourceWindow) {
   const tabId = iframeWindowToTabId.get(sourceWindow);
   return tabId ? tabManager.getTab(tabId) : null;
-}
-
-// Dynamic CSP removal — only for domains currently open in PeekPanel tabs
-const activeHeaderRules = new Map(); // domain -> ruleId
-let nextSessionRuleId = 100; // Start high to avoid conflict with static rules
-
-function getDomain(url) {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-}
-
-async function addHeaderRuleForDomain(domain) {
-  if (!domain || activeHeaderRules.has(domain)) return;
-  const ruleId = nextSessionRuleId++;
-  activeHeaderRules.set(domain, ruleId);
-  try {
-    await chrome.declarativeNetRequest.updateSessionRules({
-      addRules: [{
-        id: ruleId,
-        priority: 1,
-        action: {
-          type: "modifyHeaders",
-          responseHeaders: [
-            { header: "x-frame-options", operation: "remove" },
-            { header: "content-security-policy", operation: "remove" },
-            { header: "content-security-policy-report-only", operation: "remove" },
-            { header: "permissions-policy", operation: "remove" }
-          ]
-        },
-        condition: {
-          requestDomains: [domain],
-          resourceTypes: ["sub_frame"]
-        }
-      }]
-    });
-  } catch (e) {
-    console.error('[PeekPanel] Failed to add header rule for', domain, e);
-    activeHeaderRules.delete(domain);
-  }
-}
-
-async function removeHeaderRuleForDomain(domain) {
-  if (!domain || !activeHeaderRules.has(domain)) return;
-  const ruleId = activeHeaderRules.get(domain);
-  activeHeaderRules.delete(domain);
-  // Only remove if no other tab uses this domain
-  const stillUsed = tabManager?.getAllTabs().some(t => getDomain(t.url) === domain);
-  if (stillUsed) {
-    activeHeaderRules.set(domain, ruleId); // Restore
-    return;
-  }
-  try {
-    await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: [ruleId] });
-  } catch (e) {
-    console.error('[PeekPanel] Failed to remove header rule for', domain, e);
-  }
-}
-
-async function syncHeaderRules() {
-  // Clear all existing session rules, then add rules for current tab domains
-  const existingRules = await chrome.declarativeNetRequest.getSessionRules();
-  const existingIds = existingRules.map(r => r.id).filter(id => id >= 100);
-  if (existingIds.length > 0) {
-    await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: existingIds });
-  }
-  activeHeaderRules.clear();
-
-  if (!tabManager) return;
-  const domains = new Set();
-  for (const tab of tabManager.getAllTabs()) {
-    const domain = getDomain(tab.url);
-    if (domain) domains.add(domain);
-  }
-  for (const domain of domains) {
-    await addHeaderRuleForDomain(domain);
-  }
-}
-
-function onTabUrlChanged(url) {
-  const domain = getDomain(url);
-  if (domain) addHeaderRuleForDomain(domain);
-}
-
-function onTabRemoved(url) {
-  const domain = getDomain(url);
-  if (domain) removeHeaderRuleForDomain(domain);
 }
 
 // URLを遷移
@@ -592,310 +507,6 @@ function setupUIEventListeners() {
   }
 }
 
-// Track last processed pendingUrl to prevent double-processing
-let lastProcessedPendingUrl = null;
-
-// メッセージハンドラーを設定
-function setupMessageHandlers() {
-  // chrome.storageの変更を監視
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.pendingUrl) {
-      const url = changes.pendingUrl.newValue;
-      if (url && url !== lastProcessedPendingUrl) {
-        lastProcessedPendingUrl = url;
-        tabManager.createTab(url, true);
-        chrome.storage.local.remove('pendingUrl');
-      }
-    }
-  });
-
-  // history.html、settings.html、およびiframe内からのメッセージを受信
-  window.addEventListener('message', async (event) => {
-    const extensionOrigin = chrome.runtime.getURL('').slice(0, -1);
-
-    // 内部ページ（settings.html, history.html）からのみ受け付けるメッセージ: originで検証
-    const internalOnlyTypes = ['closeSettings', 'closeHistory', 'openHistory', 'restoreTab'];
-    if (internalOnlyTypes.includes(event.data.type)) {
-      if (event.origin !== extensionOrigin) {
-        console.warn('[PeekPanel] Rejected internal message from unexpected origin:', event.origin);
-        return;
-      }
-    }
-
-    // 外部iframe（content-script）からのみ受け付けるメッセージ: event.sourceで検証
-    const iframeOnlyTypes = ['showCustomContextMenu', 'hideCustomContextMenu', 'closeContextMenu', 'openNewTab'];
-    if (iframeOnlyTypes.includes(event.data.type)) {
-      const isFromKnownIframe = event.source && tabManager.getAllTabs().some(t => {
-        const iframe = document.getElementById(t.id);
-        return iframe && iframe.contentWindow === event.source;
-      });
-      if (!isFromKnownIframe) {
-        console.warn('[PeekPanel] Rejected iframe message from unknown source:', event.data.type);
-        return;
-      }
-    }
-
-    if (event.data.type === 'closeSettings') {
-      // 設定ページを閉じる
-      const settingsTab = tabManager.getAllTabs().find(t => t.isInternal && t.url.includes('settings.html'));
-      if (settingsTab) {
-        tabManager.closeTab(settingsTab.id);
-      }
-    } else if (event.data.type === 'closeHistory') {
-      // 履歴ページを閉じる
-      const historyTab = tabManager.getAllTabs().find(t => t.isInternal && t.url.includes('history.html'));
-      if (historyTab) {
-        tabManager.closeTab(historyTab.id);
-      }
-    } else if (event.data.type === 'openHistory') {
-      // 設定ページから履歴ページを開く
-      const historyUrl = chrome.runtime.getURL('pages/history.html');
-
-      // 既に開いている履歴タブを探す
-      const existingTab = tabManager.getAllTabs().find(t => t.isInternal && t.url.includes('history.html'));
-
-      if (existingTab) {
-        tabManager.switchTab(existingTab.id);
-      } else {
-        tabManager.createTab(historyUrl, true, true);
-      }
-    } else if (event.data.type === 'restoreTab') {
-      const { tabData, index } = event.data;
-
-      // 履歴から削除
-      tabHistory.removeFromHistory(index);
-
-      // タブを復元
-      const tabId = tabManager.createTab(tabData.url, true);
-
-      const tab = tabManager.getTab(tabId);
-      if (tab && tabData.history) {
-        tab.history = [...tabData.history];
-        tab.historyIndex = tabData.historyIndex || 0;
-        tabManager.save();
-      }
-    } else if (event.data.type === 'showCustomContextMenu') {
-      // カスタムコンテキストメニューを表示
-      window._selectedTextForSearch = event.data.text;
-      const menu = document.getElementById('customContextMenu');
-      if (!menu) return; // 要素が存在しない場合はスキップ
-
-      // メニューテキストを更新（選択テキストを20文字に制限）
-      const truncatedText = event.data.text.length > 20
-        ? event.data.text.substring(0, 20) + '...'
-        : event.data.text;
-      const searchGoogleText = document.getElementById('searchGoogleText');
-      if (searchGoogleText) {
-        searchGoogleText.textContent = `Googleで「${truncatedText}」を検索`;
-      }
-
-      menu.style.display = 'block';
-      menu.style.left = `${event.data.x}px`;
-      menu.style.top = `${event.data.y}px`;
-    } else if (event.data.type === 'hideCustomContextMenu') {
-      // カスタムコンテキストメニューを非表示
-      document.getElementById('customContextMenu').style.display = 'none';
-    } else if (event.data.type === 'closeContextMenu') {
-      // タブコンテキストメニューを閉じる（iframe内クリック時）
-      contextMenu.closeMenu();
-      // タブグループも閉じる
-      groupManager.closeAllGroups();
-      // ブックマークメニューも閉じる
-      bookmarkManager.hideDropdown();
-    } else if (event.data.type === 'updatePageTitle') {
-      // ページタイトルとURLを更新（iframe内からの通知）
-      if (event.data.url && event.data.title) {
-        const sourceIframe = event.source;
-        if (!sourceIframe) return;
-
-        // O(1) lookup by contentWindow
-        const sourceTab = findTabByWindow(sourceIframe);
-
-        if (!sourceTab || sourceTab.isInternal) return;
-
-        const newUrl = event.data.url;
-        const oldUrl = sourceTab.url;
-        const urlChanged = oldUrl !== newUrl;
-
-        // 履歴ナビゲーション中は履歴更新をスキップ
-        if (sourceTab.isNavigatingHistory) {
-          sourceTab.title = event.data.title;
-          tabManager.updateTabTitle(sourceTab.id, event.data.title);
-          // URLが変わった場合はファビコン更新
-          if (urlChanged) {
-            tabUI.updateTabFavicon(sourceTab.id, newUrl);
-          }
-          return;
-        }
-
-        // 履歴が空の場合は初期URLを追加
-        if (sourceTab.history.length === 0) {
-          tabManager.updateTabUrl(sourceTab.id, newUrl);
-          // ファビコン更新
-          tabUI.updateTabFavicon(sourceTab.id, newUrl);
-        }
-        // URLが変わった場合は履歴に追加
-        else if (urlChanged) {
-          const lastUrl = sourceTab.history[sourceTab.historyIndex];
-          const normalizedLast = normalizeUrl(lastUrl);
-          const normalizedNew = normalizeUrl(newUrl);
-
-          if (normalizedLast !== normalizedNew) {
-            tabManager.updateTabUrl(sourceTab.id, newUrl);
-          }
-          // URLが変わったらファビコンも更新
-          tabUI.updateTabFavicon(sourceTab.id, newUrl);
-        }
-
-        // タイトルを更新
-        tabManager.updateTabTitle(sourceTab.id, event.data.title);
-      }
-    } else if (event.data.type === 'pageLoaded' || event.data.type === 'historyNavigated') {
-      // ページロードまたはマウスサイドボタンなどでのブラウザネイティブナビゲーションを検出
-      const sourceIframe = event.source;
-      if (!sourceIframe) return;
-
-      const sourceTab = findTabByWindow(sourceIframe);
-
-      if (!sourceTab || sourceTab.isInternal) return;
-
-      const newUrl = event.data.url;
-      const oldUrl = sourceTab.url;
-
-      // URL が実際に変更されている場合のみ処理
-      if (oldUrl !== newUrl) {
-        // ブラウザネイティブの履歴移動なので、historyIndex を適切に更新
-        const historyIndex = sourceTab.history.indexOf(newUrl);
-
-        if (historyIndex !== -1) {
-          // 履歴内に存在するURLへの移動
-          sourceTab.historyIndex = historyIndex;
-          sourceTab.url = newUrl;
-
-          tabManager.save();
-
-          // 現在のタブの場合のみ UI を更新
-          if (sourceTab.id === tabManager.currentTabId) {
-            navigationUI.updateNavButtons(sourceTab);
-          }
-
-          if (event.data.title) {
-            tabManager.updateTabTitle(sourceTab.id, event.data.title);
-          }
-          tabUI.updateTabFavicon(sourceTab.id, newUrl);
-        } else {
-          // 履歴にない新しいURLへの移動（通常の処理）
-          tabManager.updateTabUrl(sourceTab.id, newUrl);
-          if (event.data.title) {
-            tabManager.updateTabTitle(sourceTab.id, event.data.title);
-          }
-          tabUI.updateTabFavicon(sourceTab.id, newUrl);
-        }
-      }
-    } else if (event.data.type === 'urlChanged') {
-      // SPA などでの URL 変更のフォールバック処理
-      const sourceIframe = event.source;
-      if (!sourceIframe) return;
-
-      const sourceTab = findTabByWindow(sourceIframe);
-
-      if (!sourceTab || sourceTab.isInternal || sourceTab.isNavigatingHistory) return;
-
-      const newUrl = event.data.url;
-      const oldUrl = sourceTab.url;
-
-      if (oldUrl !== newUrl) {
-        tabManager.updateTabUrl(sourceTab.id, newUrl);
-        onTabUrlChanged(newUrl); // Add CSP rule for new domain
-        if (event.data.title) {
-          tabManager.updateTabTitle(sourceTab.id, event.data.title);
-        }
-        tabUI.updateTabFavicon(sourceTab.id, newUrl);
-      }
-    } else if (event.data.type === 'openNewTab') {
-      // iframe内からの新規タブ作成リクエスト（target="_blank"リンクのクリック）
-      if (event.data.url) {
-        try {
-          const url = new URL(event.data.url);
-          // http/httpsスキームのみ許可（セキュリティ対策）
-          if (url.protocol === 'http:' || url.protocol === 'https:') {
-            tabManager.createTab(event.data.url, true);
-          } else {
-            console.warn('[PeekPanel] Invalid protocol for new tab:', url.protocol);
-          }
-        } catch (e) {
-          console.warn('[PeekPanel] Invalid URL for new tab:', event.data.url);
-        }
-      }
-    }
-  });
-}
-
-// AI選択プルダウンを初期化
-function initAIDropdown() {
-  const dropdown = document.getElementById('ai-selector-dropdown');
-  if (!dropdown) return;
-
-  // DEFAULT_AISからoptionタグを生成
-  DEFAULT_AIS.forEach(ai => {
-    const option = document.createElement('option');
-    option.value = ai.id;
-    // 最初の文字を大文字にして表示名を生成
-    option.textContent = ai.id.charAt(0).toUpperCase() + ai.id.slice(1);
-    dropdown.appendChild(option);
-  });
-}
-
-// AI選択を読み込み
-async function loadAISelection() {
-  try {
-    if (!chrome.runtime?.id) return;
-
-    const { cleanupAI } = await chrome.storage.sync.get({
-      cleanupAI: 'claude'
-    });
-
-    // プルダウンの値を設定
-    const dropdown = document.getElementById('ai-selector-dropdown');
-    if (dropdown) {
-      dropdown.value = cleanupAI;
-    }
-  } catch (error) {
-    if (!error.message?.includes('Extension context invalidated')) {
-      console.error('[PeekPanel] Error loading AI selection:', error);
-    }
-  }
-}
-
-// AI選択を保存
-async function saveAISelection(selectedAI) {
-  try {
-    if (!chrome.runtime?.id) return;
-
-    await chrome.storage.sync.set({
-      cleanupAI: selectedAI
-    });
-  } catch (error) {
-    if (!error.message?.includes('Extension context invalidated')) {
-      console.error('[PeekPanel] Error saving AI selection:', error);
-    }
-  }
-}
-
-// AI選択のイベントリスナーを設定
-function setupAIDropdownEvents() {
-  initAIDropdown();
-
-  const aiDropdown = document.getElementById('ai-selector-dropdown');
-  if (aiDropdown) {
-    aiDropdown.addEventListener('change', (e) => {
-      saveAISelection(e.target.value);
-    });
-  }
-
-  loadAISelection();
-}
-
 // 初期化関数
 async function init() {
   // マネージャーを初期化
@@ -931,23 +542,26 @@ async function init() {
   // ブックマークマネージャーを初期化
   await bookmarkManager.init();
 
-  // メッセージハンドラーを設定
-  setupMessageHandlers();
+  // メッセージハンドラーを設定 (core/messageHandler.js)
+  const msgState = setupMessageHandlers({
+    tabManager, tabHistory, tabUI, navigationUI,
+    contextMenu, groupManager, bookmarkManager,
+    findTabByWindow
+  });
 
-  // 初期化時に既存のpendingUrlをチェック（サイドパネル起動前に設定された場合に対応）
+  // 初期化時に既存のpendingUrlをチェック
   const { pendingUrl } = await chrome.storage.local.get(['pendingUrl']);
-  if (pendingUrl && pendingUrl !== lastProcessedPendingUrl) {
-    lastProcessedPendingUrl = pendingUrl;
+  if (pendingUrl && pendingUrl !== msgState.lastProcessedPendingUrl) {
+    msgState.lastProcessedPendingUrl = pendingUrl;
     tabManager.createTab(pendingUrl, true);
-    // pendingUrlのみ削除し、pendingCleanupText等はai-auto-input.jsのために残す
     chrome.storage.local.remove(['pendingUrl']);
   }
 
-  // Sync CSP header rules for currently open tab domains
-  await syncHeaderRules();
+  // Sync CSP header rules for currently open tab domains (core/headerRuleManager.js)
+  await syncHeaderRules(tabManager);
 
-  // AI選択プルダウンを初期化
-  setupAIDropdownEvents();
+  // AI選択プルダウンを初期化 (core/aiDropdown.js)
+  setupAIDropdown();
 
   // 自動スリープのチェック（1分ごと）- 二重実行防止のため既存をクリア
   if (autoSleepInterval) clearInterval(autoSleepInterval);

@@ -19,6 +19,11 @@
         "id": "ruleset_1",
         "enabled": true,
         "path": "rules.json"
+      },
+      {
+        "id": "ruleset_adblock",
+        "enabled": true,
+        "path": "adblock-rules.json"
       }
     ]
   },
