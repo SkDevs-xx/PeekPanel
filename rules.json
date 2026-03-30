@@ -191,34 +191,13 @@
                 "cdn.grok.com"
             ],
             "resourceTypes": [
-                "sub_frame"
-            ]
-        }
-    },
-    {
-        "id": 4,
-        "priority": 50,
-        "action": {
-            "type": "modifyHeaders",
-            "responseHeaders": [
-                {
-                    "header": "cross-origin-resource-policy",
-                    "operation": "remove"
-                }
-            ]
-        },
-        "condition": {
-            "requestDomains": [
-                "grok.com",
-                "cdn.grok.com"
-            ],
-            "resourceTypes": [
+                "sub_frame",
                 "stylesheet",
                 "image",
                 "media",
                 "font",
-                "xmlhttprequest",
-                "script"
+                "script",
+                "xmlhttprequest"
             ]
         }
     }
